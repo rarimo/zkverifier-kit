@@ -10,7 +10,7 @@ introduction in the Rarimo system structure.
 
 General use case for usage looks like:
 ```go
-    verifier, err := NewVerifier(WithAgeAbove(18), WithCitizenships("UKR"))
+    verifier, err := NewVerifier(PassportVerification, WithAgeAbove(18), WithCitizenships("UKR"))
     if err != nil {
         return errors.Wrap(err, "failed to create new verifier")
     }
