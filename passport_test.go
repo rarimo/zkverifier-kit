@@ -1,4 +1,4 @@
-package integration_sdk
+package zkverifier_kit
 
 import (
 	"testing"

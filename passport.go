@@ -1,4 +1,4 @@
-package integration_sdk
+package zkverifier_kit
 
 import (
 	"time"
@@ -6,7 +6,7 @@ import (
 	val "github.com/go-ozzo/ozzo-validation/v4"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	zkpverifier "github.com/iden3/go-rapidsnark/verifier"
-	circuit "github.com/rarimo/integration-sdk/circut"
+	circuit "github.com/rarimo/zkverifier-kit/circut"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )

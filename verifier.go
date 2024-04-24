@@ -1,4 +1,4 @@
-package integration_sdk
+package zkverifier_kit
 
 import (
 	zkptypes "github.com/iden3/go-rapidsnark/types"

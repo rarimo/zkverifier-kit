@@ -1,4 +1,4 @@
-module github.com/rarimo/integration-sdk
+module github.com/rarimo/zkverifier-kit
 
 go 1.22
 
