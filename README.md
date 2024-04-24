@@ -10,12 +10,19 @@ introduction in the Rarimo system structure.
 
 General use case for usage looks like:
 ```go
-    verifier, err := NewVerifier(PassportVerification, WithAgeAbove(18), WithCitizenships("UKR"))
+    verifier, err := NewVerifier(
+		PassportVerification,
+		WithExternalID(identifier),
+		WithAgeAbove(18),
+		WithCitizenships("UKR"),
+    )
     if err != nil {
         return errors.Wrap(err, "failed to create new verifier")
     }
-    
-    if err = verifier.VerifyProof(proof); err != nil {
+
+    externalIDHash := sha256.Sum256([]byte(identifier))
+    externalIDHashStr := hex.EncodeToString(externalIDHash[:])
+    if err = verifier.VerifyProof(proof, &externalIDHashStr); err != nil {
         return errors.Wrap(err, "failed to verify proof")
     }
 ```

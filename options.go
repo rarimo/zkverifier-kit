@@ -1,6 +1,8 @@
 package integration_sdk
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 )
 
@@ -9,6 +11,10 @@ import (
 // structure validation `github.com/go-ozzo/ozzo-validation/v4` is used, so IsEmpty method has to
 // work correct with each field in order to have supposed logic.
 type VerifyOptions struct {
+	// externalID - is an external identifier with which the proof is associated. This value has
+	// to be in a raw format (e.g. email, rarimo address), because this library will hash this value
+	// with SHA256 hashing and compare with the one tha will be passed during proof verification.
+	externalID string
 	// age - a minimal age required to proof some statement.
 	age time.Time
 	// citizenships - array of interfaces (for more convenient usage during validation) that stores
@@ -28,6 +34,15 @@ type VerifyOptions struct {
 // It allows to create convenient methods With... that will add new value to the fields for
 // that structure.
 type VerifyOption func(*VerifyOptions)
+
+// WithExternalID takes event identifier as a string, this is whatever the system wants to connect the proof
+// with (e.g. email, phone number, incremental id, etc.)
+func WithExternalID(identifier string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		idHash := sha256.Sum256([]byte(identifier))
+		opts.externalID = hex.EncodeToString(idHash[:])
+	}
+}
 
 // WithAgeAbove adds new age check. It is an integer (e.g. 10, 18, 21) above which the person's
 // age must be in proof.

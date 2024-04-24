@@ -55,9 +55,11 @@ func NewPassportVerifier(options ...VerifyOption) (Connector, error) {
 
 // VerifyProof method is used for proof verification, it validates inputs and values that was initialised
 // in NewVerifier function and then check ZKP with verification key downloaded at the same time using
-// `github.com/iden3/go-rapidsnark/verifier` package.
-func (v *Verifier) VerifyProof(proof zkptypes.ZKProof) error {
-	if err := v.validate(proof); err != nil {
+// `github.com/iden3/go-rapidsnark/verifier` package. ExternalID is an optional parameter that represents
+// some user identifier to connect proof with, if value is not nil, it has to be a hex encoded string (without 0x
+// prefix) of SHA256 hash from the value that was passed in WithExternalID function.
+func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, externalID *string) error {
+	if err := v.validate(proof, externalID); err != nil {
 		return errors.Wrap(err, "failed to validate proof")
 	}
 
@@ -69,13 +71,18 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof) error {
 }
 
 // validate is a helper method to validate public signals with values stored in opts field.
-func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
+func (v *Verifier) validate(zkProof zkptypes.ZKProof, externalID *string) error {
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
 		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(14, 14)),
+		"external_id": val.Validate(externalID, val.When(
+			!val.IsEmpty(v.opts.externalID),
+			val.Required,
+			val.In(v.opts.externalID),
+		)),
 	}.Filter()
 	if err != nil {
-		return errors.Wrap(err, "failed to validate zkproof")
+		return errors.Wrap(err, "failed to validate arguments")
 	}
 
 	return val.Errors{
