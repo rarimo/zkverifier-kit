@@ -18,6 +18,10 @@ type VerifyOptions struct {
 	// address - is any cosmos address for which proof was generated. It is stored in decoded form,
 	// without prefix.
 	address []byte
+	// eventID - unique identifier associated with a specific event or interaction within
+	// the protocol execution, may be used to keep track of various steps or actions, this
+	// id is a string with a big integer in decimals format
+	eventID string
 }
 
 // VerifyOption type alias for function that may add new values to VerifyOptions structure.
@@ -50,6 +54,13 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 func WithAddress(address []byte) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.address = address
+	}
+}
+
+// WithEventID takes event identifier as a string that represents big number in a decimal format.
+func WithEventID(identifier string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.eventID = identifier
 	}
 }
 

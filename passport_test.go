@@ -20,6 +20,9 @@ const (
 	ukrCitizenship = "UKR"
 	usaCitizenship = "USA"
 	engCitizenship = "ENG"
+
+	validEventID   = "304358862882731539112827930982999386691702727710421481944329166126417129570"
+	invalidEventID = "AC42D1A986804618C7A793FBE814D9B31E47BE51E082806363DCA6958F3062"
 )
 
 var validProof = zkptypes.ZKProof{
@@ -161,13 +164,43 @@ func TestWithAgeHigher(t *testing.T) {
 	}
 }
 
+func TestWithEventID(t *testing.T) {
+	verifier, err := NewVerifier(PassportVerification, WithEventID(validEventID))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestWithInvalidEventID(t *testing.T) {
+	verifier, err := NewVerifier(PassportVerification, WithEventID(invalidEventID))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_id: must be a valid value.") {
+			t.Fatal(errors.Wrap(err, "verifying proof"))
+		}
+	}
+}
+
 func TestWithAllOptions(t *testing.T) {
 	_, decodedAddr, err := bech32.DecodeToBase256(validAddress)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(equalAge), WithAddress(decodedAddr), WithCitizenships(ukrCitizenship))
+	verifier, err := NewVerifier(
+		PassportVerification,
+		WithAgeAbove(equalAge),
+		WithAddress(decodedAddr),
+		WithCitizenships(ukrCitizenship),
+		WithEventID(validEventID),
+	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -183,13 +216,19 @@ func TestWithAllOptionsFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(higherAge), WithAddress(decodedAddr), WithCitizenships(usaCitizenship))
+	verifier, err := NewVerifier(
+		PassportVerification,
+		WithAgeAbove(higherAge),
+		WithAddress(decodedAddr),
+		WithCitizenships(usaCitizenship),
+		WithEventID(invalidEventID),
+	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}

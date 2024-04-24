@@ -1,8 +1,6 @@
 package integration_sdk
 
 import (
-	"fmt"
-	"math/big"
 	"time"
 
 	val "github.com/go-ozzo/ozzo-validation/v4"
@@ -25,7 +23,6 @@ const (
 	pubSignalSelector       = 12
 
 	proofSelectorValue = "39"
-	proofEventIDValue  = "ac42d1a986804618c7a793fbe814d9b31e47be51e082806363dca6958f3062"
 )
 
 // Verifier is a structure representing some instance for validation and verification zero knowledge proof
@@ -81,21 +78,17 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		return errors.Wrap(err, "failed to validate zkproof")
 	}
 
-	eventID, ok := new(big.Int).SetString(zkProof.PubSignals[pubSignalEventID], 10)
-	if !ok {
-		return val.Errors{
-			"pub_signals/event_id": fmt.Errorf("setting string %s", zkProof.PubSignals[pubSignalEventID]),
-		}
-	}
-
 	return val.Errors{
 		// Required fields to validate
 		"pub_signals/nullifier":       val.Validate(zkProof.PubSignals[PubSignalNullifier], val.Required),
 		"pub_signals/selector":        val.Validate(zkProof.PubSignals[pubSignalSelector], val.Required, val.In(proofSelectorValue)),
 		"pub_signals/expiration_date": val.Validate(zkProof.PubSignals[pubSignalExpirationDate], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/event_id":        val.Validate(eventID.Text(16), val.Required, val.In(proofEventIDValue)),
 
 		// Configurable fields
+		"pub_signals/event_id": val.Validate(zkProof.PubSignals[pubSignalEventID], val.When(
+			!val.IsEmpty(v.opts.eventID),
+			val.Required,
+			val.In(v.opts.eventID))),
 		"pub_signals/birth_date": val.Validate(zkProof.PubSignals[pubSignalBirthDate], val.When(
 			!val.IsEmpty(v.opts.age),
 			val.Required,
