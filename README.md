@@ -21,7 +21,7 @@ General use case for usage looks like:
 ```
 Provided example will create a new instance of verifier that takes options of the lowes
 available age and citizenship that have to be validated before proof verification. More 
-usage example can be found in [verifier tests](verifier_test.go).
+usage example can be found in [verifier tests](passport_verifier_test.go).
 
 
 Proof can be gained from the front-end apps or related Rarimo mobile applications. In general,
