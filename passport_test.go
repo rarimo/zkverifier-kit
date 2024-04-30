@@ -82,7 +82,7 @@ func TestWithCitizenship(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -93,7 +93,7 @@ func TestWithCitizenshipFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/citizenship: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
@@ -111,7 +111,7 @@ func TestWithRarimoAddress(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -127,7 +127,7 @@ func TestWithRarimoAddressFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_data: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
@@ -140,7 +140,7 @@ func TestWithAgeLower(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -151,7 +151,7 @@ func TestWithAgeEqual(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -162,7 +162,7 @@ func TestWithAgeHigher(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
@@ -175,7 +175,7 @@ func TestWithEventID(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -186,7 +186,7 @@ func TestWithInvalidEventID(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
@@ -199,22 +199,31 @@ func TestWithExternalID(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, &hashedExternalID); err != nil {
+	if err = verifier.VerifyExternalID(hashedExternalID); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying external id"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
 
 func TestWithInvalidExternalID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithExternalID(validAddress))
+	verifier, err := NewVerifier(PassportVerification)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	addressCopy := validAddress
-	if err = verifier.VerifyProof(validProof, &addressCopy); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: failed to validate arguments: external_id: must be a valid value.") {
+	verifier.SetExternalID(hashedExternalID)
+
+	if err = verifier.VerifyExternalID(hashedExternalID); err != nil {
+		if !assert.Equal(t, err.Error(), "external_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
 
@@ -235,7 +244,7 @@ func TestWithManyOptions(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
@@ -257,7 +266,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, emptyExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof); err != nil {
 		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
