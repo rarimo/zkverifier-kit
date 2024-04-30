@@ -1,4 +1,4 @@
-# Integration SDK
+# ZKVerifier Kit
 
 ## Introduction
 This repository is an SDK for connecting external services with Rarimo passport
