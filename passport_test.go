@@ -6,6 +6,8 @@ import (
 	"github.com/cosmos/btcutil/bech32"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
+	"github.com/rarimo/zkverifier-kit/csca"
+	"github.com/rarimo/zkverifier-kit/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,11 +25,10 @@ const (
 
 	validEventID   = "304358862882731539112827930982999386691702727710421481944329166126417129570"
 	invalidEventID = "AC42D1A986804618C7A793FBE814D9B31E47BE51E082806363DCA6958F3062"
-)
 
-var (
-	emptyExternalID  *string = nil
-	hashedExternalID         = "5f3d4868bb9c16dd83407eda63d5ce8f7ca39063df9eb9aef217e6c6ee9ffb20"
+	storedRoot = "1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b"
+
+	hashedExternalID = "5f3d4868bb9c16dd83407eda63d5ce8f7ca39063df9eb9aef217e6c6ee9ffb20"
 )
 
 var validProof = zkptypes.ZKProof{
@@ -233,12 +234,15 @@ func TestWithManyOptions(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
+	rootVerifier := csca.NewVerifier(testutil.NewMockCaller(storedRoot), 0, 0)
+
 	verifier, err := NewVerifier(
 		PassportVerification,
 		WithAgeAbove(equalAge),
 		WithAddress(decodedAddr),
 		WithCitizenships(ukrCitizenship),
 		WithEventID(validEventID),
+		WithRootVerifier(rootVerifier),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
@@ -255,19 +259,22 @@ func TestWithManyOptionsFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
+	rootVerifier := csca.NewVerifier(testutil.NewMockCaller("ffffff"), 0, 0)
+
 	verifier, err := NewVerifier(
 		PassportVerification,
 		WithAgeAbove(higherAge),
 		WithAddress(decodedAddr),
 		WithCitizenships(usaCitizenship),
 		WithEventID(invalidEventID),
+		WithRootVerifier(rootVerifier),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_id: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: provided root does not match stored one: provided=1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b, stored=ffffff0000000000000000000000000000000000000000000000000000000000.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}

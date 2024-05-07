@@ -1,22 +1,12 @@
 package csca
 
 import (
-	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/rarimo/zkverifier-kit/internal/testutil"
 )
-
-type mockCaller struct {
-	root [32]byte
-}
-
-func (m *mockCaller) IcaoMasterTreeMerkleRoot(_ *bind.CallOpts) ([32]byte, error) {
-	return m.root, nil
-}
 
 func TestVerifier_VerifyRoot(t *testing.T) {
 	// converted from decimal providedRoot to hex storedRoot
@@ -66,12 +56,12 @@ func TestVerifier_VerifyRoot(t *testing.T) {
 		},
 	}
 
-	caller := new(mockCaller)
+	caller := testutil.NewMockCaller("")
 	v := NewVerifier(caller, 0, expiration)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			caller.root = hexToBytes(tc.stored)
+			caller.SetRoot(tc.stored)
 
 			if tc.sleep {
 				v.cache.expiresAt = v.cache.expiresAt.Add(-expiration)
@@ -90,15 +80,4 @@ func TestVerifier_VerifyRoot(t *testing.T) {
 			}
 		})
 	}
-}
-
-func hexToBytes(h string) [32]byte {
-	var b [32]byte
-	bs, err := hex.DecodeString(h)
-	if err != nil {
-		panic(fmt.Errorf("failed to decode hex: %w", err))
-	}
-
-	copy(b[:], bs)
-	return b
 }
