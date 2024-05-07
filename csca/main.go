@@ -64,7 +64,7 @@ func (v *Verifier) VerifyRoot(root string) error {
 		return nil
 	}
 
-	b, ok := new(big.Int).SetString(root, 16)
+	b, ok := new(big.Int).SetString(root, 10)
 	if !ok {
 		return fmt.Errorf("invalid root passed: %s", root)
 	}
