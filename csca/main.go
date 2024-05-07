@@ -10,27 +10,49 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
+var ErrRootMismatch = fmt.Errorf("provided root does not match stored one")
+
 // Verifier provides a method to verify CSCA tree root pub signal against the
 // root stored on the Registration contract
 type Verifier struct {
 	caller   Caller
 	timeout  time.Duration
 	disabled bool
+	cache    *cache
 }
 
-func NewVerifier(caller Caller, timeout time.Duration) *Verifier {
+// Caller is an abstract contract caller, which retrieves current CSCA (ICAO) root
+type Caller interface {
+	IcaoMasterTreeMerkleRoot(*bind.CallOpts) ([32]byte, error)
+}
+
+type cache struct {
+	root       []byte
+	expiresAt  time.Time
+	expiration time.Duration
+}
+
+func (c *cache) isExpired() bool {
+	return c.expiresAt.Before(time.Now().UTC())
+}
+
+func (c *cache) update(root []byte) {
+	c.root = root
+	c.expiresAt = time.Now().UTC().Add(c.expiration)
+}
+
+func NewVerifier(caller Caller, timeout, cacheExpiration time.Duration) *Verifier {
 	return &Verifier{
 		caller:  caller,
 		timeout: timeout,
+		cache: &cache{
+			expiration: cacheExpiration,
+		},
 	}
 }
 
 func NewDisabledVerifier() *Verifier {
 	return &Verifier{disabled: true}
-}
-
-type Caller interface {
-	IcaoMasterTreeMerkleRoot(*bind.CallOpts) ([32]byte, error)
 }
 
 // VerifyRoot accepts a root from proof's pub signals as a big decimal integer,
@@ -42,22 +64,28 @@ func (v *Verifier) VerifyRoot(root string) error {
 		return nil
 	}
 
-	rootBig, ok := new(big.Int).SetString(root, 16)
+	b, ok := new(big.Int).SetString(root, 16)
 	if !ok {
 		return fmt.Errorf("invalid root passed: %s", root)
 	}
-	rootBytes := rootBig.Bytes()
+	provided := b.Bytes()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(v.timeout))
-	defer cancel()
+	stored := v.cache.root
+	if v.cache.isExpired() {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(v.timeout))
+		defer cancel()
 
-	raw, err := v.caller.IcaoMasterTreeMerkleRoot(&bind.CallOpts{Context: ctx})
-	if err != nil {
-		return fmt.Errorf("get root from contract: %w", err)
+		raw, err := v.caller.IcaoMasterTreeMerkleRoot(&bind.CallOpts{Context: ctx})
+		if err != nil {
+			return fmt.Errorf("get root from contract: %w", err)
+		}
+
+		stored = raw[:]
+		v.cache.update(stored)
 	}
 
-	if !bytes.Equal(raw[:], rootBytes) {
-		return fmt.Errorf("root mismatch: stored %x, provided %x", raw[:], rootBytes)
+	if !bytes.Equal(provided, stored) {
+		return fmt.Errorf("%w: provided=%x, stored=%x", ErrRootMismatch, provided, stored)
 	}
 
 	return nil

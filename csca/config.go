@@ -12,7 +12,10 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const baseTimeout = 5 * time.Second
+const (
+	baseTimeout    = 5 * time.Second
+	baseExpiration = 10 * time.Second
+)
 
 type Config interface {
 	RootVerifier() *Verifier
@@ -44,9 +47,10 @@ func (c *config) RootVerifier() *Verifier {
 		}
 
 		var cfg struct {
-			RPC            string         `fig:"rpc,required"`
-			Contract       common.Address `fig:"contract,required"`
-			RequestTimeout time.Duration  `fig:"request_timeout"`
+			RPC             string         `fig:"rpc,required"`
+			Contract        common.Address `fig:"contract,required"`
+			RequestTimeout  time.Duration  `fig:"request_timeout"`
+			CacheExpiration time.Duration  `fig:"cache_expiration"`
 		}
 
 		err = figure.Out(&cfg).
@@ -60,6 +64,9 @@ func (c *config) RootVerifier() *Verifier {
 		if cfg.RequestTimeout == 0 {
 			cfg.RequestTimeout = baseTimeout
 		}
+		if cfg.CacheExpiration == 0 {
+			cfg.RequestTimeout = baseExpiration
+		}
 
 		cli, err := ethclient.Dial(cfg.RPC)
 		if err != nil {
@@ -71,6 +78,6 @@ func (c *config) RootVerifier() *Verifier {
 			panic(fmt.Errorf("failed to bind registration contract caller: %w", err))
 		}
 
-		return NewVerifier(caller, cfg.RequestTimeout)
+		return NewVerifier(caller, cfg.RequestTimeout, cfg.CacheExpiration)
 	}).(*Verifier)
 }
