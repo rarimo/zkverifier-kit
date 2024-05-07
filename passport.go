@@ -22,6 +22,7 @@ const (
 	pubSignalCitizenship    = 6
 	pubSignalEventID        = 9
 	pubSignalEventData      = 10
+	pubSignalIdStateHash    = 11
 	pubSignalSelector       = 12
 
 	proofSelectorValue = "39"
@@ -98,6 +99,7 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		"pub_signals/nullifier":       val.Validate(zkProof.PubSignals[PubSignalNullifier], val.Required),
 		"pub_signals/selector":        val.Validate(zkProof.PubSignals[pubSignalSelector], val.Required, val.In(proofSelectorValue)),
 		"pub_signals/expiration_date": val.Validate(zkProof.PubSignals[pubSignalExpirationDate], val.Required, afterDate(time.Now().UTC())),
+		"pub_signals/id_state_hash":   v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[pubSignalIdStateHash]),
 
 		// Configurable fields
 		"pub_signals/event_id": val.Validate(zkProof.PubSignals[pubSignalEventID], val.When(
