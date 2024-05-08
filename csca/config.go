@@ -17,7 +17,7 @@ const (
 	baseExpiration = 10 * time.Second
 )
 
-type Config interface {
+type RootVerifier interface {
 	RootVerifier() *Verifier
 }
 
@@ -26,7 +26,7 @@ type config struct {
 	getter kv.Getter
 }
 
-func NewConfig(getter kv.Getter) Config {
+func NewRootVerifier(getter kv.Getter) RootVerifier {
 	return &config{getter: getter}
 }
 

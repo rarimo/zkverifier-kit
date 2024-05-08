@@ -25,7 +25,7 @@ type VerifyOptions struct {
 	citizenships []interface{}
 	// address - is any cosmos address for which proof was generated. It is stored in decoded form,
 	// without prefix.
-	address []byte
+	address string
 	// eventID - unique identifier associated with a specific event or interaction within
 	// the protocol execution, may be used to keep track of various steps or actions, this
 	// id is a string with a big integer in decimals format
@@ -76,7 +76,7 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 
 // WithAddress takes decoded address that must be validated in proof. It requires to have same format that is in
 // proof public signals (for example: bech32 address decoded to base256 without human-readable part)
-func WithAddress(address []byte) VerifyOption {
+func WithAddress(address string) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.address = address
 	}
@@ -106,10 +106,9 @@ func WithVerificationKeyFile(name string) VerifyOption {
 	}
 }
 
-// mergeOptions function that collects all parameters together into one VerifyOptions structure that
-// can be used further.
-func mergeOptions(options ...VerifyOption) VerifyOptions {
-	opts := VerifyOptions{}
+// mergeOptions collects all parameters together and fills VerifyOptions struct
+// with it, overwriting existing values
+func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	for _, opt := range options {
 		opt(&opts)
 	}

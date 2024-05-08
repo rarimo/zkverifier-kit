@@ -1,8 +1,6 @@
 package zkverifier_kit
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -13,8 +11,8 @@ import (
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
-// predefined values and positions for public inputs in zero knowledge proof. It may change depending on the proof
-// and the values that it reveals.
+// predefined values and positions for public inputs in zero knowledge proof. It
+// may change depending on the proof and the values that it reveals.
 const (
 	PubSignalNullifier      = 0
 	pubSignalBirthDate      = 1
@@ -47,7 +45,7 @@ type Verifier struct {
 func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, error) {
 	verifier := Verifier{
 		verificationKey: verificationKey,
-		opts:            mergeOptions(options...),
+		opts:            mergeOptions(VerifyOptions{}, options...),
 	}
 
 	file := verifier.opts.verificationKeyFile
@@ -68,10 +66,15 @@ func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Veri
 }
 
 // VerifyProof method is used for proof verification, it validates inputs and values that was initialised
-// in NewVerifier function and then check ZKP with verification key downloaded at the same time using
+// in NewVerifier function and then check iden3 zero-knowledge proof. with verification key downloaded at the same time using
 // `github.com/iden3/go-rapidsnark/verifier` package.
-func (v *Verifier) VerifyProof(proof zkptypes.ZKProof) error {
-	if err := v.validate(proof); err != nil {
+func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) error {
+	v2 := Verifier{
+		verificationKey: v.verificationKey,
+		opts:            mergeOptions(v.opts, options...),
+	}
+
+	if err := v2.validate(proof); err != nil {
 		return errors.Wrap(err, "failed to validate proof")
 	}
 
@@ -82,19 +85,6 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof) error {
 	return nil
 }
 
-// VerifyExternalID is a method to check that externalID corresponds to the one that was set in options.
-// ExternalID is an optional parameter that represents some user identifier to connect proof with, it
-// has to be a hex encoded string (without 0x prefix) of SHA256 hash from the value that was passed in
-// WithExternalID or SetExternalID methods.
-func (v *Verifier) VerifyExternalID(externalID string) error {
-	return val.Errors{
-		"external_id": val.Validate(v.opts.externalID,
-			val.Required,
-			val.In(externalID),
-		),
-	}.Filter()
-}
-
 // validate is a helper method to validate public signals with values stored in opts field.
 func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 	err := val.Errors{
@@ -102,7 +92,7 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(14, 14)),
 	}.Filter()
 	if err != nil {
-		return errors.Wrap(err, "failed to validate arguments")
+		return err
 	}
 
 	return val.Errors{
@@ -122,7 +112,7 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 			val.Required,
 			beforeDate(v.opts.age),
 		)),
-		"pub_signals/citizenship": val.Validate(mustDecodeInt(zkProof.PubSignals[pubSignalCitizenship]), val.When(
+		"pub_signals/citizenship": val.Validate(decodeInt(zkProof.PubSignals[pubSignalCitizenship]), val.When(
 			!val.IsEmpty(v.opts.citizenships),
 			val.Required,
 			val.In(v.opts.citizenships...),
@@ -130,15 +120,7 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		"pub_signals/event_data": val.Validate(zkProof.PubSignals[pubSignalEventData], val.When(
 			!val.IsEmpty(v.opts.address),
 			val.Required,
-			val.In(encodeInt(v.opts.address)),
+			matchesAddress(v.opts.address),
 		)),
 	}.Filter()
-}
-
-// SetExternalID - helper method that can be used either to set empty external identifier or update existing one.
-// This external ID is some value with which zero knowledge proof has to be associated with. This value has to be
-// a raw one, then it will be hashed with SHA256 and stored.
-func (v *Verifier) SetExternalID(externalID string) {
-	idHash := sha256.Sum256([]byte(externalID))
-	v.opts.externalID = hex.EncodeToString(idHash[:])
 }

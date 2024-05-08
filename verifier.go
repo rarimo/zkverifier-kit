@@ -14,9 +14,7 @@ var ErrUnknownProofType = errors.New("unknown proof type")
 
 // Connector is an abstraction which collects all the methods to be implemented by each verifier
 type Connector interface {
-	SetExternalID(externalID string)
-	VerifyExternalID(externalID string) error
-	VerifyProof(proof zkptypes.ZKProof) error
+	VerifyProof(zkptypes.ZKProof, ...VerifyOption) error
 }
 
 // NewVerifier is a general constructor that will create a new verifier instance depending on
