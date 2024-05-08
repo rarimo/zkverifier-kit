@@ -1,6 +1,8 @@
 package zkverifier_kit
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	val "github.com/go-ozzo/ozzo-validation/v4"
@@ -55,11 +57,9 @@ func NewPassportVerifier(options ...VerifyOption) (Connector, error) {
 
 // VerifyProof method is used for proof verification, it validates inputs and values that was initialised
 // in NewVerifier function and then check ZKP with verification key downloaded at the same time using
-// `github.com/iden3/go-rapidsnark/verifier` package. ExternalID is an optional parameter that represents
-// some user identifier to connect proof with, if value is not nil, it has to be a hex encoded string (without 0x
-// prefix) of SHA256 hash from the value that was passed in WithExternalID function.
-func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, externalID *string) error {
-	if err := v.validate(proof, externalID); err != nil {
+// `github.com/iden3/go-rapidsnark/verifier` package.
+func (v *Verifier) VerifyProof(proof zkptypes.ZKProof) error {
+	if err := v.validate(proof); err != nil {
 		return errors.Wrap(err, "failed to validate proof")
 	}
 
@@ -70,16 +70,24 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, externalID *string) error
 	return nil
 }
 
+// VerifyExternalID is a method to check that externalID corresponds to the one that was set in options.
+// ExternalID is an optional parameter that represents some user identifier to connect proof with, it
+// has to be a hex encoded string (without 0x prefix) of SHA256 hash from the value that was passed in
+// WithExternalID or SetExternalID methods.
+func (v *Verifier) VerifyExternalID(externalID string) error {
+	return val.Errors{
+		"external_id": val.Validate(v.opts.externalID,
+			val.Required,
+			val.In(externalID),
+		),
+	}.Filter()
+}
+
 // validate is a helper method to validate public signals with values stored in opts field.
-func (v *Verifier) validate(zkProof zkptypes.ZKProof, externalID *string) error {
+func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
 		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(14, 14)),
-		"external_id": val.Validate(externalID, val.When(
-			!val.IsEmpty(v.opts.externalID),
-			val.Required,
-			val.In(v.opts.externalID),
-		)),
 	}.Filter()
 	if err != nil {
 		return errors.Wrap(err, "failed to validate arguments")
@@ -112,4 +120,12 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof, externalID *string) error 
 			val.In(encodeInt(v.opts.address)),
 		)),
 	}.Filter()
+}
+
+// SetExternalID - helper method that can be used either to set empty external identifier or update existing one.
+// This external ID is some value with which zero knowledge proof has to be associated with. This value has to be
+// a raw one, then it will be hashed with SHA256 and stored.
+func (v *Verifier) SetExternalID(externalID string) {
+	idHash := sha256.Sum256([]byte(externalID))
+	v.opts.externalID = hex.EncodeToString(idHash[:])
 }
