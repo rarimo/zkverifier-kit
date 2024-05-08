@@ -49,7 +49,7 @@ It worth to notice that to verify external identifier you have to take SHA256 ha
 value that was passed in the `WithExternalID(...)` or `SetExternalID(...)` 
 
 
-More usage example can be found in [verifier tests](passport_test.go).
+More usage examples can be found in [verifier tests](passport_test.go).
 
 
 Proof can be gained from the front-end apps or related Rarimo mobile applications. In general,
@@ -66,4 +66,4 @@ it has such format:
         PubSignals []string `json:"pub_signals"`
     }
 ```
-In our systems mostly used ZKProof type from the [iden3 package.](https://github.com/iden3/go-rapidsnark)
+In our systems mostly used ZKProof type is the one from [iden3 package](https://github.com/iden3/go-rapidsnark).
