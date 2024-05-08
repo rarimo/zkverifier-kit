@@ -32,6 +32,8 @@ type VerifyOptions struct {
 	eventID string
 	// rootVerifier - a provider of CSCA tree root verification for pubSignalIdStateHash
 	rootVerifier CSCARootVerifier
+	// verificationKey - stores verification key for proofs
+	verificationKeyFile string
 }
 
 type CSCARootVerifier interface {
@@ -91,6 +93,16 @@ func WithEventID(identifier string) VerifyOption {
 func WithRootVerifier(v CSCARootVerifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.rootVerifier = v
+	}
+}
+
+// WithVerificationKeyFile takes a string that represents the name of the file
+// with verification key. The file is read on NewPassportVerifier call. If you
+// are providing this option along with the key argument, the latter will be
+// overwritten by the read from file.
+func WithVerificationKeyFile(name string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.verificationKeyFile = name
 	}
 }
 

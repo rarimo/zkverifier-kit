@@ -1,11 +1,13 @@
 package zkverifier_kit
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cosmos/btcutil/bech32"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
+	"github.com/rarimo/zkverifier-kit/circuit"
 	"github.com/rarimo/zkverifier-kit/csca"
 	"github.com/rarimo/zkverifier-kit/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -77,8 +79,18 @@ var validProof = zkptypes.ZKProof{
 	},
 }
 
+var verificationKey []byte
+
+func init() {
+	var err error
+	verificationKey, err = circuit.VerificationKey.ReadFile(circuit.VerificationKeyFileName)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestWithCitizenship(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithCitizenships(ukrCitizenship))
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(ukrCitizenship))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -89,7 +101,7 @@ func TestWithCitizenship(t *testing.T) {
 }
 
 func TestWithCitizenshipFail(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithCitizenships(usaCitizenship, engCitizenship))
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(usaCitizenship, engCitizenship))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -107,7 +119,7 @@ func TestWithRarimoAddress(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
-	verifier, err := NewVerifier(PassportVerification, WithAddress(decodedAddr))
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(decodedAddr))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -123,7 +135,7 @@ func TestWithRarimoAddressFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
 	}
 
-	verifier, err := NewVerifier(PassportVerification, WithAddress(decodedAddr))
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(decodedAddr))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -136,7 +148,7 @@ func TestWithRarimoAddressFail(t *testing.T) {
 }
 
 func TestWithAgeLower(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(lowerAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(lowerAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -147,7 +159,7 @@ func TestWithAgeLower(t *testing.T) {
 }
 
 func TestWithAgeEqual(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(equalAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(equalAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -158,7 +170,7 @@ func TestWithAgeEqual(t *testing.T) {
 }
 
 func TestWithAgeHigher(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(higherAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(higherAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -171,7 +183,7 @@ func TestWithAgeHigher(t *testing.T) {
 }
 
 func TestWithEventID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithEventID(validEventID))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventID(validEventID))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -182,7 +194,7 @@ func TestWithEventID(t *testing.T) {
 }
 
 func TestWithInvalidEventID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithEventID(invalidEventID))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventID(invalidEventID))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -195,7 +207,7 @@ func TestWithInvalidEventID(t *testing.T) {
 }
 
 func TestWithExternalID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithExternalID(validAddress))
+	verifier, err := NewPassportVerifier(verificationKey, WithExternalID(validAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -210,7 +222,7 @@ func TestWithExternalID(t *testing.T) {
 }
 
 func TestWithInvalidExternalID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification)
+	verifier, err := NewPassportVerifier(verificationKey)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -236,13 +248,14 @@ func TestWithManyOptions(t *testing.T) {
 
 	rootVerifier := csca.NewVerifier(testutil.NewMockCaller(storedRoot), 0, 0)
 
-	verifier, err := NewVerifier(
-		PassportVerification,
+	verifier, err := NewPassportVerifier(
+		verificationKey,
 		WithAgeAbove(equalAge),
 		WithAddress(decodedAddr),
 		WithCitizenships(ukrCitizenship),
 		WithEventID(validEventID),
 		WithRootVerifier(rootVerifier),
+		WithVerificationKeyFile(circuit.VerificationKeyFileName),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
@@ -261,13 +274,14 @@ func TestWithManyOptionsFail(t *testing.T) {
 
 	rootVerifier := csca.NewVerifier(testutil.NewMockCaller("ffffff"), 0, 0)
 
-	verifier, err := NewVerifier(
-		PassportVerification,
+	verifier, err := NewPassportVerifier(
+		nil,
 		WithAgeAbove(higherAge),
 		WithAddress(decodedAddr),
 		WithCitizenships(usaCitizenship),
 		WithEventID(invalidEventID),
 		WithRootVerifier(rootVerifier),
+		WithVerificationKeyFile(circuit.VerificationKeyFileName),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
@@ -280,8 +294,20 @@ func TestWithManyOptionsFail(t *testing.T) {
 	}
 }
 
+func TestInvalidVerificationKey(t *testing.T) {
+	_, err := NewPassportVerifier(nil)
+	if err == nil || err.Error() != ErrVerificationKeyRequired.Error() {
+		t.Errorf("NewPassportVerifier(nil) = %v, expected %s", err, ErrVerificationKeyRequired.Error())
+	}
+
+	_, err = NewPassportVerifier(nil, WithVerificationKeyFile("nonexistent"))
+	if err == nil || !strings.Contains(err.Error(), "failed to read verification key from file") {
+		t.Errorf("NewPassportVerifier(nil) = %v, expected %s", err, ErrVerificationKeyRequired.Error())
+	}
+}
+
 func TestInvalidProofType(t *testing.T) {
-	if _, err := NewVerifier("invalid"); err != nil {
+	if _, err := NewVerifier("unknown_type", verificationKey); err != nil {
 		if !assert.Error(t, ErrUnknownProofType, err) {
 			t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 		}
