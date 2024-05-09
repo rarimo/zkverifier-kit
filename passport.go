@@ -2,12 +2,12 @@ package zkverifier_kit
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	val "github.com/go-ozzo/ozzo-validation/v4"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	zkpverifier "github.com/iden3/go-rapidsnark/verifier"
-	"github.com/rarimo/zkverifier-kit/circuit"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
@@ -57,7 +57,7 @@ func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Veri
 	}
 
 	var err error
-	verifier.verificationKey, err = circuit.VerificationKey.ReadFile(file)
+	verifier.verificationKey, err = os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read verification key from file %q: %w", file, err)
 	}

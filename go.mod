@@ -3,7 +3,6 @@ module github.com/rarimo/zkverifier-kit
 go 1.22
 
 require (
-	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0

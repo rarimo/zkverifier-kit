@@ -1,12 +1,12 @@
 package zkverifier_kit
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
-	"github.com/rarimo/zkverifier-kit/circuit"
 	"github.com/rarimo/zkverifier-kit/csca"
 	"github.com/rarimo/zkverifier-kit/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +30,8 @@ const (
 	storedRoot = "1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b"
 
 	hashedExternalID = "5f3d4868bb9c16dd83407eda63d5ce8f7ca39063df9eb9aef217e6c6ee9ffb20"
+
+	verificationKeyFile = "example_verification_key.json"
 )
 
 var validProof = zkptypes.ZKProof{
@@ -82,7 +84,7 @@ var verificationKey []byte
 
 func init() {
 	var err error
-	verificationKey, err = circuit.VerificationKey.ReadFile(circuit.VerificationKeyFileName)
+	verificationKey, err = os.ReadFile(verificationKeyFile)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +147,7 @@ func TestWithManyOptions(t *testing.T) {
 		WithCitizenships(ukrCitizenship),
 		WithEventID(validEventID),
 		WithRootVerifier(rootVerifier),
-		WithVerificationKeyFile(circuit.VerificationKeyFileName),
+		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
@@ -166,7 +168,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 		WithCitizenships(usaCitizenship),
 		WithEventID(invalidEventID),
 		WithRootVerifier(rootVerifier),
-		WithVerificationKeyFile(circuit.VerificationKeyFileName),
+		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
