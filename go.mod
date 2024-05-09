@@ -3,6 +3,7 @@ module github.com/rarimo/zkverifier-kit
 go 1.22
 
 require (
+	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
@@ -61,15 +62,4 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-replace (
-	github.com/agl/ed25519 => github.com/bnb-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
-	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.0-beta
-	github.com/confio/ics23/go => github.com/cosmos/cosmos-sdk/ics23/go v0.8.0
-	github.com/cosmos/cosmos-sdk => github.com/rarimo/cosmos-sdk v0.46.7
-	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.4
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/tendermint/tendermint => github.com/tendermint/tendermint v0.34.24
-	google.golang.org/grpc => google.golang.org/grpc v1.55.0
 )
