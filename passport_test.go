@@ -7,7 +7,7 @@ import (
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
-	"github.com/rarimo/zkverifier-kit/csca"
+	"github.com/rarimo/zkverifier-kit/identity"
 	"github.com/rarimo/zkverifier-kit/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -90,6 +90,89 @@ func init() {
 	}
 }
 
+func TestWithCitizenship(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(ukrCitizenship))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestWithCitizenshipFail(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(usaCitizenship, engCitizenship))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/citizenship: must be a valid value.") {
+			t.Fatal(errors.Wrap(err, "verifying proof"))
+		}
+	}
+}
+
+func TestWithRarimoAddress(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(validAddress))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestWithRarimoAddressFail(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(invalidAddress))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_data: event data does not match the address.") {
+			t.Fatal(errors.Wrap(err, "verifying proof"))
+		}
+	}
+}
+
+func TestWithAgeLower(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(lowerAge))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestWithAgeEqual(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(equalAge))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestWithAgeHigher(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(higherAge))
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.VerifyProof(validProof); err != nil {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late.") {
+			t.Fatal(errors.Wrap(err, "verifying proof"))
+		}
+	}
+}
+
 func TestWithEventID(t *testing.T) {
 	verifier, err := NewPassportVerifier(verificationKey, WithEventID(validEventID))
 	if err != nil {
@@ -139,7 +222,7 @@ func TestWithInvalidExternalID(t *testing.T) {
 }
 
 func TestWithManyOptions(t *testing.T) {
-	rootVerifier := csca.NewVerifier(testutil.NewMockCaller(storedRoot), 0, 0)
+	rootVerifier := identity.NewVerifier(new(testutil.MockCaller).WithRoot(storedRoot), 0)
 
 	verifier, err := NewPassportVerifier(
 		verificationKey,
@@ -160,7 +243,7 @@ func TestWithManyOptions(t *testing.T) {
 }
 
 func TestWithManyOptionsFail(t *testing.T) {
-	rootVerifier := csca.NewVerifier(testutil.NewMockCaller("ffffff"), 0, 0)
+	rootVerifier := identity.NewVerifier(new(testutil.MockCaller).WithRoot("ffffff"), 0)
 
 	verifier, err := NewPassportVerifier(
 		nil,
@@ -175,7 +258,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof, WithAddress(invalidAddress)); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: provided root does not match stored one: provided=1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b, stored=ffffff0000000000000000000000000000000000000000000000000000000000.") {
+		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: invalid identity root.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}

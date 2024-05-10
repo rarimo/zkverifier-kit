@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/rarimo/zkverifier-kit/csca"
+	"github.com/rarimo/zkverifier-kit/identity"
 )
 
 // VerifyOptions structure that stores all fields that may be validated before proof verification.
@@ -30,13 +30,13 @@ type VerifyOptions struct {
 	// the protocol execution, may be used to keep track of various steps or actions, this
 	// id is a string with a big integer in decimals format
 	eventID string
-	// rootVerifier - a provider of CSCA tree root verification for pubSignalIdStateHash
-	rootVerifier CSCARootVerifier
+	// rootVerifier - provider of identity root verification for pubSignalIdStateHash
+	rootVerifier IdentityRootVerifier
 	// verificationKey - stores verification key for proofs
 	verificationKeyFile string
 }
 
-type CSCARootVerifier interface {
+type IdentityRootVerifier interface {
 	VerifyRoot(root string) error
 }
 
@@ -89,8 +89,8 @@ func WithEventID(identifier string) VerifyOption {
 	}
 }
 
-// WithRootVerifier takes an abstract verifier that should verify CSCA tree root hash in proof
-func WithRootVerifier(v CSCARootVerifier) VerifyOption {
+// WithRootVerifier takes an abstract verifier that should verify idStateRoot signal against identity tree
+func WithRootVerifier(v IdentityRootVerifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.rootVerifier = v
 	}
@@ -114,7 +114,7 @@ func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	}
 
 	if opts.rootVerifier == nil {
-		opts.rootVerifier = csca.NewDisabledVerifier()
+		opts.rootVerifier = identity.NewDisabledVerifier()
 	}
 
 	return opts

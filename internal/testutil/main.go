@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 
@@ -8,28 +9,24 @@ import (
 )
 
 type MockCaller struct {
-	root [32]byte
+	root []byte
 }
 
-func NewMockCaller(root string) *MockCaller {
-	return &MockCaller{root: hexToBytes(root)}
+func (m *MockCaller) WithRoot(root string) *MockCaller {
+	return &MockCaller{
+		root: hexToBytes(root),
+	}
 }
 
-func (m *MockCaller) SetRoot(root string) {
-	m.root = hexToBytes(root)
+func (m *MockCaller) IsRootValid(_ *bind.CallOpts, root [32]byte) (bool, error) {
+	return bytes.Equal(root[:], m.root), nil
 }
 
-func (m *MockCaller) IcaoMasterTreeMerkleRoot(_ *bind.CallOpts) ([32]byte, error) {
-	return m.root, nil
-}
-
-func hexToBytes(h string) [32]byte {
-	var b [32]byte
+func hexToBytes(h string) []byte {
 	bs, err := hex.DecodeString(h)
 	if err != nil {
 		panic(fmt.Errorf("failed to decode hex: %w", err))
 	}
 
-	copy(b[:], bs)
-	return b
+	return bs
 }
