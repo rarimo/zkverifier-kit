@@ -10,9 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
-// ErrInvalidRoot indicates that identity root verification flow completed
-// without internal errors, but the root itself is invalid
-var ErrInvalidRoot = errors.New("invalid identity root")
+var (
+	// ErrContractCall shows that the contract call on root validation was
+	// unsuccessful, indicating an internal error
+	ErrContractCall = errors.New("contract call failed")
+	// ErrInvalidRoot shows that identity root verification flow completed
+	// without internal errors, but the root itself is invalid
+	ErrInvalidRoot = errors.New("invalid identity root")
+)
 
 // Verifier provides a method to verify user identity presence in the identity
 // tree, stored in PoseidonSMT contract
@@ -40,7 +45,7 @@ func NewDisabledVerifier() *Verifier {
 
 // VerifyRoot accepts an identity root from proof's pub signals as a big decimal
 // integer, then calls the contract to check validity. It is recommended to
-// assert ErrInvalidRoot for a special internal errors handling.
+// have a special handling of ErrContractCall.
 //
 // If Verifier is disabled, nil is always returned.
 func (v *Verifier) VerifyRoot(root string) error {
@@ -61,7 +66,7 @@ func (v *Verifier) VerifyRoot(root string) error {
 
 	valid, err := v.caller.IsRootValid(&bind.CallOpts{Context: ctx}, provided)
 	if err != nil {
-		return fmt.Errorf("check root on contract: %w", err)
+		return fmt.Errorf("%w: %w", ErrContractCall, err)
 	}
 	if !valid {
 		return ErrInvalidRoot
