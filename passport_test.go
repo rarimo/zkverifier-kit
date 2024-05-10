@@ -108,7 +108,7 @@ func TestWithCitizenshipFail(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/citizenship: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/citizenship: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
@@ -132,7 +132,7 @@ func TestWithRarimoAddressFail(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_data: event data does not match the address.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/event_data: event data does not match the address.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
@@ -167,7 +167,7 @@ func TestWithAgeHigher(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/birth_date: date is too late.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
@@ -191,7 +191,7 @@ func TestWithInvalidEventID(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_id: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/event_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
@@ -258,7 +258,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 	}
 
 	if err = verifier.VerifyProof(validProof, WithAddress(invalidAddress)); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: invalid identity root.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: invalid identity root.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}

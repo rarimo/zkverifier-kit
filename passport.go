@@ -8,7 +8,9 @@ import (
 	val "github.com/go-ozzo/ozzo-validation/v4"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	zkpverifier "github.com/iden3/go-rapidsnark/verifier"
-	"gitlab.com/distributed_lab/logan/v3/errors"
+	"github.com/rarimo/zkverifier-kit/identity"
+
+	"errors"
 )
 
 // predefined values and positions for public inputs in zero knowledge proof. It
@@ -65,9 +67,11 @@ func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Veri
 	return &verifier, nil
 }
 
-// VerifyProof method is used for proof verification, it validates inputs and values that was initialised
-// in NewVerifier function and then check iden3 zero-knowledge proof. with verification key downloaded at the same time using
-// `github.com/iden3/go-rapidsnark/verifier` package.
+// VerifyProof method verifies iden3 ZK proof and checks public signals. The
+// public signals to validate are defined in the VerifyOption list. Firstly, you
+// pass initial values to verify in NewPassportVerifier. In case when custom
+// values are required for different proofs, the options can be passed to
+// VerifyProof, which override the initial ones.
 func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) error {
 	v2 := Verifier{
 		verificationKey: v.verificationKey,
@@ -95,12 +99,17 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		return err
 	}
 
+	err = v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[pubSignalIdStateHash])
+	if errors.Is(err, identity.ErrContractCall) {
+		return err
+	}
+
 	return val.Errors{
 		// Required fields to validate
 		"pub_signals/nullifier":       val.Validate(zkProof.PubSignals[PubSignalNullifier], val.Required),
 		"pub_signals/selector":        val.Validate(zkProof.PubSignals[pubSignalSelector], val.Required, val.In(proofSelectorValue)),
 		"pub_signals/expiration_date": val.Validate(zkProof.PubSignals[pubSignalExpirationDate], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/id_state_hash":   v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[pubSignalIdStateHash]),
+		"pub_signals/id_state_hash":   err,
 
 		// Configurable fields
 		"pub_signals/event_id": val.Validate(zkProof.PubSignals[pubSignalEventID], val.When(
