@@ -75,11 +75,11 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 	}
 
 	if err := v2.validate(proof); err != nil {
-		return errors.Wrap(err, "failed to validate proof")
+		return err
 	}
 
 	if err := zkpverifier.VerifyGroth16(proof, v.verificationKey); err != nil {
-		return errors.Wrap(err, "failed to verify proof")
+		return fmt.Errorf("groth16 verification failed: %w", err)
 	}
 
 	return nil
