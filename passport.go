@@ -1,6 +1,7 @@
 package zkverifier_kit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -9,8 +10,6 @@ import (
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	zkpverifier "github.com/iden3/go-rapidsnark/verifier"
 	"github.com/rarimo/zkverifier-kit/identity"
-
-	"errors"
 )
 
 // predefined values and positions for public inputs in zero knowledge proof. It

@@ -61,7 +61,7 @@ func (v *Verifier) VerifyRoot(root string) error {
 	var provided [32]byte
 	copy(provided[:], b.Bytes())
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(v.timeout))
+	ctx, cancel := context.WithTimeout(context.Background(), v.timeout)
 	defer cancel()
 
 	valid, err := v.caller.IsRootValid(&bind.CallOpts{Context: ctx}, provided)
