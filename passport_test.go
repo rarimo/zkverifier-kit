@@ -1,11 +1,14 @@
 package zkverifier_kit
 
 import (
+	"os"
+	"strings"
 	"testing"
 
-	"github.com/cosmos/btcutil/bech32"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
+	"github.com/rarimo/zkverifier-kit/identity"
+	"github.com/rarimo/zkverifier-kit/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,11 +26,12 @@ const (
 
 	validEventID   = "304358862882731539112827930982999386691702727710421481944329166126417129570"
 	invalidEventID = "AC42D1A986804618C7A793FBE814D9B31E47BE51E082806363DCA6958F3062"
-)
 
-var (
-	emptyExternalID  *string = nil
-	hashedExternalID         = "5f3d4868bb9c16dd83407eda63d5ce8f7ca39063df9eb9aef217e6c6ee9ffb20"
+	storedRoot = "1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b"
+
+	hashedExternalID = "5f3d4868bb9c16dd83407eda63d5ce8f7ca39063df9eb9aef217e6c6ee9ffb20"
+
+	verificationKeyFile = "example_verification_key.json"
 )
 
 var validProof = zkptypes.ZKProof{
@@ -76,8 +80,18 @@ var validProof = zkptypes.ZKProof{
 	},
 }
 
+var verificationKey []byte
+
+func init() {
+	var err error
+	verificationKey, err = os.ReadFile(verificationKeyFile)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestWithCitizenship(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithCitizenships(ukrCitizenship))
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(ukrCitizenship))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -88,25 +102,20 @@ func TestWithCitizenship(t *testing.T) {
 }
 
 func TestWithCitizenshipFail(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithCitizenships(usaCitizenship, engCitizenship))
+	verifier, err := NewPassportVerifier(verificationKey, WithCitizenships(usaCitizenship, engCitizenship))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/citizenship: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/citizenship: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
 }
 
 func TestWithRarimoAddress(t *testing.T) {
-	_, decodedAddr, err := bech32.DecodeToBase256(validAddress)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
-	}
-
-	verifier, err := NewVerifier(PassportVerification, WithAddress(decodedAddr))
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(validAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -117,25 +126,20 @@ func TestWithRarimoAddress(t *testing.T) {
 }
 
 func TestWithRarimoAddressFail(t *testing.T) {
-	_, decodedAddr, err := bech32.DecodeToBase256(invalidAddress)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
-	}
-
-	verifier, err := NewVerifier(PassportVerification, WithAddress(decodedAddr))
+	verifier, err := NewPassportVerifier(verificationKey, WithAddress(invalidAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_data: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/event_data: event data does not match the address.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
 }
 
 func TestWithAgeLower(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(lowerAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(lowerAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -146,7 +150,7 @@ func TestWithAgeLower(t *testing.T) {
 }
 
 func TestWithAgeEqual(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(equalAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(equalAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -157,20 +161,20 @@ func TestWithAgeEqual(t *testing.T) {
 }
 
 func TestWithAgeHigher(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithAgeAbove(higherAge))
+	verifier, err := NewPassportVerifier(verificationKey, WithAgeAbove(higherAge))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/birth_date: date is too late.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
 }
 
 func TestWithEventID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithEventID(validEventID))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventID(validEventID))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -181,100 +185,99 @@ func TestWithEventID(t *testing.T) {
 }
 
 func TestWithInvalidEventID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithEventID(invalidEventID))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventID(invalidEventID))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
 	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/event_id: must be a valid value.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/event_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
 }
 
 func TestWithExternalID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification, WithExternalID(validAddress))
+	verifier, err := NewPassportVerifier(verificationKey, WithExternalID(validAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyExternalID(hashedExternalID); err != nil {
-		t.Fatal(errors.Wrap(err, "verifying external id"))
-	}
-
-	if err = verifier.VerifyProof(validProof); err != nil {
+	if err = verifier.VerifyProof(validProof, WithExternalID(hashedExternalID)); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
 
 func TestWithInvalidExternalID(t *testing.T) {
-	verifier, err := NewVerifier(PassportVerification)
+	verifier, err := NewPassportVerifier(verificationKey)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	verifier.SetExternalID(hashedExternalID)
-
-	if err = verifier.VerifyExternalID(hashedExternalID); err != nil {
+	if err = verifier.VerifyProof(validProof, WithExternalID(hashedExternalID)); err != nil {
 		if !assert.Equal(t, err.Error(), "external_id: must be a valid value.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
-
-	if err = verifier.VerifyProof(validProof); err != nil {
-		t.Fatal(errors.Wrap(err, "verifying proof"))
-	}
 }
 
 func TestWithManyOptions(t *testing.T) {
-	_, decodedAddr, err := bech32.DecodeToBase256(validAddress)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
-	}
+	rootVerifier := identity.NewVerifier(new(testutil.MockCaller).WithRoot(storedRoot), 0)
 
-	verifier, err := NewVerifier(
-		PassportVerification,
+	verifier, err := NewPassportVerifier(
+		verificationKey,
 		WithAgeAbove(equalAge),
-		WithAddress(decodedAddr),
 		WithCitizenships(ukrCitizenship),
 		WithEventID(validEventID),
+		WithRootVerifier(rootVerifier),
+		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof); err != nil {
+	err = verifier.VerifyProof(validProof, WithAddress(validAddress))
+	if err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
 }
 
 func TestWithManyOptionsFail(t *testing.T) {
-	_, decodedAddr, err := bech32.DecodeToBase256(validAddress)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "failed to decode bech32 address"))
-	}
+	rootVerifier := identity.NewVerifier(new(testutil.MockCaller).WithRoot("ffffff"), 0)
 
-	verifier, err := NewVerifier(
-		PassportVerification,
+	verifier, err := NewPassportVerifier(
+		nil,
 		WithAgeAbove(higherAge),
-		WithAddress(decodedAddr),
 		WithCitizenships(usaCitizenship),
 		WithEventID(invalidEventID),
+		WithRootVerifier(rootVerifier),
+		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof); err != nil {
-		if !assert.Equal(t, err.Error(), "failed to validate proof: pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_id: must be a valid value.") {
+	if err = verifier.VerifyProof(validProof, WithAddress(invalidAddress)); err != nil {
+		if !assert.Equal(t, err.Error(), "pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: invalid identity root.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}
 	}
 }
 
+func TestInvalidVerificationKey(t *testing.T) {
+	_, err := NewPassportVerifier(nil)
+	if err == nil || err.Error() != ErrVerificationKeyRequired.Error() {
+		t.Errorf("NewPassportVerifier(nil) = %v, expected %s", err, ErrVerificationKeyRequired.Error())
+	}
+
+	_, err = NewPassportVerifier(nil, WithVerificationKeyFile("nonexistent"))
+	if err == nil || !strings.Contains(err.Error(), "failed to read verification key from file") {
+		t.Errorf("NewPassportVerifier(nil) = %v, expected %s", err, ErrVerificationKeyRequired.Error())
+	}
+}
+
 func TestInvalidProofType(t *testing.T) {
-	if _, err := NewVerifier("invalid"); err != nil {
+	if _, err := NewVerifier("unknown_type", verificationKey); err != nil {
 		if !assert.Error(t, ErrUnknownProofType, err) {
 			t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 		}

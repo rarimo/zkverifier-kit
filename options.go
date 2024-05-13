@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
+
+	"github.com/rarimo/zkverifier-kit/identity"
 )
 
 // VerifyOptions structure that stores all fields that may be validated before proof verification.
@@ -23,11 +25,19 @@ type VerifyOptions struct {
 	citizenships []interface{}
 	// address - is any cosmos address for which proof was generated. It is stored in decoded form,
 	// without prefix.
-	address []byte
+	address string
 	// eventID - unique identifier associated with a specific event or interaction within
 	// the protocol execution, may be used to keep track of various steps or actions, this
 	// id is a string with a big integer in decimals format
 	eventID string
+	// rootVerifier - provider of identity root verification for pubSignalIdStateHash
+	rootVerifier IdentityRootVerifier
+	// verificationKey - stores verification key for proofs
+	verificationKeyFile string
+}
+
+type IdentityRootVerifier interface {
+	VerifyRoot(root string) error
 }
 
 // VerifyOption type alias for function that may add new values to VerifyOptions structure.
@@ -66,7 +76,7 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 
 // WithAddress takes decoded address that must be validated in proof. It requires to have same format that is in
 // proof public signals (for example: bech32 address decoded to base256 without human-readable part)
-func WithAddress(address []byte) VerifyOption {
+func WithAddress(address string) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.address = address
 	}
@@ -79,12 +89,33 @@ func WithEventID(identifier string) VerifyOption {
 	}
 }
 
-// mergeOptions function that collects all parameters together into one VerifyOptions structure that
-// can be used further.
-func mergeOptions(options ...VerifyOption) VerifyOptions {
-	opts := VerifyOptions{}
+// WithRootVerifier takes an abstract verifier that should verify idStateRoot signal against identity tree
+func WithRootVerifier(v IdentityRootVerifier) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.rootVerifier = v
+	}
+}
+
+// WithVerificationKeyFile takes a string that represents the name of the file
+// with verification key. The file is read on NewPassportVerifier call. If you
+// are providing this option along with the key argument, the latter will be
+// overwritten by the read from file.
+func WithVerificationKeyFile(name string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.verificationKeyFile = name
+	}
+}
+
+// mergeOptions collects all parameters together and fills VerifyOptions struct
+// with it, overwriting existing values
+func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	for _, opt := range options {
 		opt(&opts)
 	}
+
+	if opts.rootVerifier == nil {
+		opts.rootVerifier = identity.NewDisabledVerifier()
+	}
+
 	return opts
 }
