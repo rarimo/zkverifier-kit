@@ -32,8 +32,12 @@ type VerifyOptions struct {
 	eventID string
 	// rootVerifier - provider of identity root verification for pubSignalIdStateHash
 	rootVerifier IdentityRootVerifier
-	// verificationKey - stores verification key for proofs
+	// verificationKeyFile - stores verification key for proofs
 	verificationKeyFile string
+	// maxIdentitiesCount - maximum amount of identities that user can have
+	maxIdentitiesCount int64
+	// lastIdentityCreationTimestamp - the upper timestamp when user might create their identities
+	lastIdentityCreationTimestamp int64
 }
 
 type IdentityRootVerifier interface {
@@ -103,6 +107,28 @@ func WithRootVerifier(v IdentityRootVerifier) VerifyOption {
 func WithVerificationKeyFile(name string) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.verificationKeyFile = name
+	}
+}
+
+// WithIdentitiesCounter takes maximum amount of identities that user can have
+// during proof verification.
+//
+// NOTE: WithIdentitiesCounter is tightly connected with WithIdentitiesCreationTimestampLimit.
+// At least one of these options should be validated without errors
+func WithIdentitiesCounter(maxIdentityCount int64) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.maxIdentitiesCount = maxIdentityCount
+	}
+}
+
+// WithIdentitiesCreationTimestampLimit takes the upper bound for timestamp when user might create
+// identities.
+//
+// NOTE: WithIdentitiesCreationTimestampLimit is tightly connected with WithIdentitiesCounter.
+// At least one of these options should be validated without errors
+func WithIdentitiesCreationTimestampLimit(maxIdentityCreationTimestamp int64) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.lastIdentityCreationTimestamp = maxIdentityCreationTimestamp
 	}
 }
 

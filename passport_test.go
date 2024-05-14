@@ -80,6 +80,31 @@ var validProof = zkptypes.ZKProof{
 	},
 }
 
+var pubSignals = []string{
+	"13670197989959160947016892212488819355235823437209979068218084261720054582279",
+	"52992115355956",
+	"55216908480563",
+	"0",
+	"0",
+	"0",
+	"5589842",
+	"0",
+	"0",
+	"304358862882731539112827930982999386691702727710421481944329166126417129570",
+	"994318722035655867941976495378932234159094527419",
+	"12951550518411690859840573908810811336996269038828192037883707959753719498363",
+	"39",
+	"15806704627620783043448169214838786348395809330456140685459045233186516590845",
+	"500",
+	"0",
+	"1",
+	"52983525027888",
+	"52983525027888",
+	"52983525027888",
+	"52983525027888",
+	"0",
+}
+
 var verificationKey []byte
 
 func init() {
@@ -205,6 +230,59 @@ func TestWithExternalID(t *testing.T) {
 
 	if err = verifier.VerifyProof(validProof, WithExternalID(hashedExternalID)); err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
+	}
+}
+
+func TestIdentitiesParams(t *testing.T) {
+	verifier, err := NewPassportVerifier(verificationKey,
+		WithIdentitiesCounter(3),
+		WithIdentitiesCreationTimestampLimit(1000),
+	)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	err = verifier.validateIdentitiesInputs(pubSignals)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "validating inputs"))
+	}
+}
+
+func TestInvalidCounterIdentityParams(t *testing.T) {
+	inputsCopy := pubSignals
+	inputsCopy[16] = "100"
+
+	verifier, err := NewPassportVerifier(verificationKey,
+		WithIdentitiesCounter(3),
+		WithIdentitiesCreationTimestampLimit(1000),
+	)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	err = verifier.validateIdentitiesInputs(inputsCopy)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "validating inputs"))
+	}
+}
+
+func TestInvalidIdentitiesParams(t *testing.T) {
+	inputsCopy := pubSignals
+	inputsCopy[14] = "5000"
+	inputsCopy[16] = "100"
+
+	verifier, err := NewPassportVerifier(verificationKey,
+		WithIdentitiesCounter(3),
+		WithIdentitiesCreationTimestampLimit(1000),
+	)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
+	}
+
+	if err = verifier.validateIdentitiesInputs(inputsCopy); err != nil {
+		if !assert.Equal(t, err.Error(), "pub_signals/identity_counter_upperbound: must be no greater than 3.\npub_signals/timestamp_upperbound: must be no greater than 1000.") {
+			t.Fatal(errors.Wrap(err, "validating inputs"))
+		}
 	}
 }
 

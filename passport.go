@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	val "github.com/go-ozzo/ozzo-validation/v4"
@@ -15,14 +16,16 @@ import (
 // predefined values and positions for public inputs in zero knowledge proof. It
 // may change depending on the proof and the values that it reveals.
 const (
-	PubSignalNullifier      = 0
-	pubSignalBirthDate      = 1
-	pubSignalExpirationDate = 2
-	pubSignalCitizenship    = 6
-	pubSignalEventID        = 9
-	pubSignalEventData      = 10
-	pubSignalIdStateHash    = 11
-	pubSignalSelector       = 12
+	PubSignalNullifier                 = 0
+	pubSignalBirthDate                 = 1
+	pubSignalExpirationDate            = 2
+	pubSignalCitizenship               = 6
+	pubSignalEventID                   = 9
+	pubSignalEventData                 = 10
+	pubSignalIdStateHash               = 11
+	pubSignalSelector                  = 12
+	pubSignalTimestampUpperBound       = 14
+	pubSignalIdentityCounterUpperBound = 16
 
 	proofSelectorValue = "39"
 )
@@ -92,7 +95,7 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
-		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(14, 14)),
+		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(21, 21)),
 	}.Filter()
 	if err != nil {
 		return err
@@ -100,6 +103,11 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 
 	err = v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[pubSignalIdStateHash])
 	if errors.Is(err, identity.ErrContractCall) {
+		return err
+	}
+
+	err = v.validateIdentitiesInputs(zkProof.PubSignals)
+	if err != nil {
 		return err
 	}
 
@@ -131,4 +139,52 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 			matchesAddress(v.opts.address),
 		)),
 	}.Filter()
+}
+
+func (v *Verifier) validateIdentitiesInputs(signals []string) error {
+	counterUpperBound, err := strconv.ParseInt(signals[pubSignalIdentityCounterUpperBound], 10, 64)
+	if err != nil {
+		return fmt.Errorf("parsing integer: %w", err)
+	}
+
+	timestampUpperBound, err := strconv.ParseInt(signals[pubSignalTimestampUpperBound], 10, 64)
+	if err != nil {
+		return fmt.Errorf("parsing integer: %w", err)
+	}
+
+	counterErr := val.Errors{
+		"pub_signals/identity_counter_upperbound": val.Validate(counterUpperBound, val.When(
+			!val.IsEmpty(v.opts.maxIdentitiesCount),
+			val.Required,
+			val.Max(v.opts.maxIdentitiesCount),
+		)),
+	}.Filter()
+
+	timestampErr := val.Errors{
+		"pub_signals/timestamp_upperbound": val.Validate(timestampUpperBound, val.When(
+			!val.IsEmpty(v.opts.lastIdentityCreationTimestamp),
+			val.Required,
+			val.Max(v.opts.lastIdentityCreationTimestamp),
+		)),
+	}.Filter()
+
+	if counterErr != nil && timestampErr != nil {
+		return errors.Join(counterErr, timestampErr)
+	}
+
+	if (counterErr != nil || timestampErr != nil) && hasEmptyValues(v.opts.lastIdentityCreationTimestamp, v.opts.maxIdentitiesCount) {
+		return errors.Join(counterErr, timestampErr)
+	}
+
+	return nil
+}
+
+func hasEmptyValues(values ...any) bool {
+	for _, v := range values {
+		if val.IsEmpty(v) {
+			return true
+		}
+	}
+
+	return false
 }
