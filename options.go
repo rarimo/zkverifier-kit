@@ -23,21 +23,24 @@ type VerifyOptions struct {
 	// all citizenships that accepted in proof. Under the hood, it is a string of Alpha-3 county codes,
 	// described in the ISO 3166 international standard.
 	citizenships []interface{}
-	// address - is any cosmos address for which proof was generated. It is stored in decoded form,
-	// without prefix.
-	address string
+	// eventData - is any data for which proof was generated, it has to be properly validated BEFORE the proof
+	// verification because the SDK has no idea about the content inside, just checks if the values are the same.
+	eventData interface{}
 	// eventID - unique identifier associated with a specific event or interaction within
 	// the protocol execution, may be used to keep track of various steps or actions, this
 	// id is a string with a big integer in decimals format
 	eventID string
-	// rootVerifier - provider of identity root verification for pubSignalIdStateHash
+	// rootVerifier - provider of identity root verification for IdStateHash
 	rootVerifier IdentityRootVerifier
 	// verificationKeyFile - stores verification key for proofs
 	verificationKeyFile string
-	// maxIdentitiesCount - maximum amount of identities that user can have
+	// maxIdentitiesCount - maximum amount of identities that user can have. Default value is -1
 	maxIdentitiesCount int64
 	// lastIdentityCreationTimestamp - the upper timestamp when user might create their identities
-	lastIdentityCreationTimestamp int64
+	lastIdentityCreationTimestamp time.Time
+
+	// helper option to check whether the all values for identities were set, this value is used for validation.
+	allIdentitiesParamsSet bool
 }
 
 type IdentityRootVerifier interface {
@@ -78,11 +81,11 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 	}
 }
 
-// WithAddress takes decoded address that must be validated in proof. It requires to have same format that is in
-// proof public signals (for example: bech32 address decoded to base256 without human-readable part)
-func WithAddress(address string) VerifyOption {
+// WithEventData takes some data for which proof was generated. This value format has to be validated before
+// the signals validation because the kit checks ONLY the correspondence of these values.
+func WithEventData(eventData interface{}) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.address = address
+		opts.eventData = eventData
 	}
 }
 
@@ -128,13 +131,15 @@ func WithIdentitiesCounter(maxIdentityCount int64) VerifyOption {
 // At least one of these options should be validated without errors
 func WithIdentitiesCreationTimestampLimit(maxIdentityCreationTimestamp int64) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.lastIdentityCreationTimestamp = maxIdentityCreationTimestamp
+		opts.lastIdentityCreationTimestamp = time.Unix(maxIdentityCreationTimestamp, 0)
 	}
 }
 
 // mergeOptions collects all parameters together and fills VerifyOptions struct
 // with it, overwriting existing values
 func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
+	opts.maxIdentitiesCount = -1
+
 	for _, opt := range options {
 		opt(&opts)
 	}
@@ -142,6 +147,8 @@ func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	if opts.rootVerifier == nil {
 		opts.rootVerifier = identity.NewDisabledVerifier()
 	}
+
+	opts.allIdentitiesParamsSet = opts.maxIdentitiesCount == -1 || !opts.lastIdentityCreationTimestamp.IsZero()
 
 	return opts
 }

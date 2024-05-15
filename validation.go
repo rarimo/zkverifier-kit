@@ -44,7 +44,7 @@ func (r timeRule) Validate(date interface{}) error {
 		return fmt.Errorf("invalid type: %T, expected string", date)
 	}
 
-	parsed, err := time.Parse("060102", decodeInt(raw))
+	parsed, err := time.Parse("060102", raw)
 	if err != nil {
 		return fmt.Errorf("invalid date string: %w", err)
 	}

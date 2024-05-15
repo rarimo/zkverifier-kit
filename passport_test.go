@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/pkg/errors"
@@ -95,7 +96,7 @@ var pubSignals = []string{
 	"12951550518411690859840573908810811336996269038828192037883707959753719498363",
 	"39",
 	"15806704627620783043448169214838786348395809330456140685459045233186516590845",
-	"500",
+	"240515",
 	"0",
 	"1",
 	"52983525027888",
@@ -140,7 +141,7 @@ func TestWithCitizenshipFail(t *testing.T) {
 }
 
 func TestWithRarimoAddress(t *testing.T) {
-	verifier, err := NewPassportVerifier(verificationKey, WithAddress(validAddress))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventData(validAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -151,7 +152,7 @@ func TestWithRarimoAddress(t *testing.T) {
 }
 
 func TestWithRarimoAddressFail(t *testing.T) {
-	verifier, err := NewPassportVerifier(verificationKey, WithAddress(invalidAddress))
+	verifier, err := NewPassportVerifier(verificationKey, WithEventData(invalidAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
@@ -235,8 +236,8 @@ func TestWithExternalID(t *testing.T) {
 
 func TestIdentitiesParams(t *testing.T) {
 	verifier, err := NewPassportVerifier(verificationKey,
-		WithIdentitiesCounter(3),
-		WithIdentitiesCreationTimestampLimit(1000),
+		WithIdentitiesCounter(0),
+		WithIdentitiesCreationTimestampLimit(time.Now().Unix()),
 	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
@@ -314,7 +315,7 @@ func TestWithManyOptions(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	err = verifier.VerifyProof(validProof, WithAddress(validAddress))
+	err = verifier.VerifyProof(validProof, WithEventData(validAddress))
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "verifying proof"))
 	}
@@ -335,7 +336,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "initiating new verifier failed"))
 	}
 
-	if err = verifier.VerifyProof(validProof, WithAddress(invalidAddress)); err != nil {
+	if err = verifier.VerifyProof(validProof, WithEventData(invalidAddress)); err != nil {
 		if !assert.Equal(t, err.Error(), "pub_signals/birth_date: date is too late; pub_signals/citizenship: must be a valid value; pub_signals/event_data: event data does not match the address; pub_signals/event_id: must be a valid value; pub_signals/id_state_hash: invalid identity root.") {
 			t.Fatal(errors.Wrap(err, "verifying proof"))
 		}

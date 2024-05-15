@@ -13,19 +13,21 @@ import (
 	"github.com/rarimo/zkverifier-kit/identity"
 )
 
+type PubSignal int
+
 // predefined values and positions for public inputs in zero knowledge proof. It
 // may change depending on the proof and the values that it reveals.
 const (
-	PubSignalNullifier                 = 0
-	pubSignalBirthDate                 = 1
-	pubSignalExpirationDate            = 2
-	pubSignalCitizenship               = 6
-	pubSignalEventID                   = 9
-	pubSignalEventData                 = 10
-	pubSignalIdStateHash               = 11
-	pubSignalSelector                  = 12
-	pubSignalTimestampUpperBound       = 14
-	pubSignalIdentityCounterUpperBound = 16
+	Nullifier                 PubSignal = 0
+	Citizenship               PubSignal = 6
+	EventID                   PubSignal = 9
+	EventData                 PubSignal = 10
+	IdStateHash               PubSignal = 11
+	Selector                  PubSignal = 12
+	TimestampUpperBound       PubSignal = 14
+	IdentityCounterUpperBound PubSignal = 16
+	BirthdateUpperBound       PubSignal = 18
+	ExpirationDateLowerBound  PubSignal = 19
 
 	proofSelectorValue = "39"
 )
@@ -101,7 +103,7 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 		return err
 	}
 
-	err = v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[pubSignalIdStateHash])
+	err = v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[IdStateHash])
 	if errors.Is(err, identity.ErrContractCall) {
 		return err
 	}
@@ -113,58 +115,55 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 
 	return val.Errors{
 		// Required fields to validate
-		"pub_signals/nullifier":       val.Validate(zkProof.PubSignals[PubSignalNullifier], val.Required),
-		"pub_signals/selector":        val.Validate(zkProof.PubSignals[pubSignalSelector], val.Required, val.In(proofSelectorValue)),
-		"pub_signals/expiration_date": val.Validate(zkProof.PubSignals[pubSignalExpirationDate], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/id_state_hash":   err,
+		"pub_signals/nullifier":                   val.Validate(zkProof.PubSignals[Nullifier], val.Required),
+		"pub_signals/selector":                    val.Validate(zkProof.PubSignals[Selector], val.Required, val.In(proofSelectorValue)),
+		"pub_signals/expiration_date_lower_bound": val.Validate(zkProof.PubSignals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
+		"pub_signals/id_state_hash":               err,
 
 		// Configurable fields
-		"pub_signals/event_id": val.Validate(zkProof.PubSignals[pubSignalEventID], val.When(
+		"pub_signals/event_id": val.Validate(zkProof.PubSignals[EventID], val.When(
 			!val.IsEmpty(v.opts.eventID),
 			val.Required,
 			val.In(v.opts.eventID))),
-		"pub_signals/birth_date": val.Validate(zkProof.PubSignals[pubSignalBirthDate], val.When(
+		"pub_signals/birth_date_upper_bound": val.Validate(zkProof.PubSignals[BirthdateUpperBound], val.When(
 			!val.IsEmpty(v.opts.age),
 			val.Required,
 			beforeDate(v.opts.age),
 		)),
-		"pub_signals/citizenship": val.Validate(decodeInt(zkProof.PubSignals[pubSignalCitizenship]), val.When(
+		"pub_signals/citizenship": val.Validate(decodeInt(zkProof.PubSignals[Citizenship]), val.When(
 			!val.IsEmpty(v.opts.citizenships),
 			val.Required,
 			val.In(v.opts.citizenships...),
 		)),
-		"pub_signals/event_data": val.Validate(zkProof.PubSignals[pubSignalEventData], val.When(
-			!val.IsEmpty(v.opts.address),
+		"pub_signals/event_data": val.Validate(zkProof.PubSignals[EventData], val.When(
+			!val.IsEmpty(v.opts.eventData),
 			val.Required,
-			matchesAddress(v.opts.address),
+			val.In(v.opts.eventData),
 		)),
 	}.Filter()
 }
 
 func (v *Verifier) validateIdentitiesInputs(signals []string) error {
-	counterUpperBound, err := strconv.ParseInt(signals[pubSignalIdentityCounterUpperBound], 10, 64)
+	counterUpperBound, err := strconv.ParseInt(signals[IdentityCounterUpperBound], 10, 64)
 	if err != nil {
-		return fmt.Errorf("parsing integer: %w", err)
-	}
-
-	timestampUpperBound, err := strconv.ParseInt(signals[pubSignalTimestampUpperBound], 10, 64)
-	if err != nil {
-		return fmt.Errorf("parsing integer: %w", err)
+		return val.Errors{
+			"pub_signals/identity_counter_upperbound": fmt.Errorf("parsing integer: %w", err),
+		}.Filter()
 	}
 
 	counterErr := val.Errors{
 		"pub_signals/identity_counter_upperbound": val.Validate(counterUpperBound, val.When(
-			!val.IsEmpty(v.opts.maxIdentitiesCount),
+			v.opts.maxIdentitiesCount != -1,
 			val.Required,
 			val.Max(v.opts.maxIdentitiesCount),
 		)),
 	}.Filter()
 
 	timestampErr := val.Errors{
-		"pub_signals/timestamp_upperbound": val.Validate(timestampUpperBound, val.When(
+		"pub_signals/timestamp_upperbound": val.Validate(signals[TimestampUpperBound], val.When(
 			!val.IsEmpty(v.opts.lastIdentityCreationTimestamp),
 			val.Required,
-			val.Max(v.opts.lastIdentityCreationTimestamp),
+			beforeDate(v.opts.lastIdentityCreationTimestamp),
 		)),
 	}.Filter()
 
@@ -172,19 +171,9 @@ func (v *Verifier) validateIdentitiesInputs(signals []string) error {
 		return errors.Join(counterErr, timestampErr)
 	}
 
-	if (counterErr != nil || timestampErr != nil) && hasEmptyValues(v.opts.lastIdentityCreationTimestamp, v.opts.maxIdentitiesCount) {
+	if (counterErr != nil || timestampErr != nil) && !v.opts.allIdentitiesParamsSet {
 		return errors.Join(counterErr, timestampErr)
 	}
 
 	return nil
-}
-
-func hasEmptyValues(values ...any) bool {
-	for _, v := range values {
-		if val.IsEmpty(v) {
-			return true
-		}
-	}
-
-	return false
 }
