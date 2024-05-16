@@ -109,15 +109,17 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 		return err
 	}
 
+	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
 	all := val.Errors{
 		"pub_signals/nullifier":                   val.Validate(signals[Nullifier], val.Required),
 		"pub_signals/selector":                    val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
 		"pub_signals/expiration_date_lower_bound": val.Validate(signals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
 		"pub_signals/id_state_hash":               err,
 		"pub_signals/event_id":                    validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
-		"pub_signals/birth_date_upper_bound":      validateOnOptSet(signals[BirthdateUpperBound], v.opts.age, beforeDate(v.opts.age)),
-		"pub_signals/citizenship":                 validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
-		"pub_signals/event_data":                  validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
+		// upper bound is a date: the earlier it is, the higher the age
+		"pub_signals/birth_date_upper_bound": validateOnOptSet(signals[BirthdateUpperBound], v.opts.age, beforeDate(allowedBirthDate)),
+		"pub_signals/citizenship":            validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
+		"pub_signals/event_data":             validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
 	}
 
 	for field, e := range v.validateIdentitiesInputs(signals) {

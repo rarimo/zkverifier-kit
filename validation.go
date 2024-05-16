@@ -97,10 +97,10 @@ func decodeInt(s string) string {
 	return string(b.Bytes())
 }
 
-func validateOnOptSet(value, option any, rule val.Rule) error {
+func validateOnOptSet(value, option any, rules val.Rule) error {
 	return val.Validate(value, val.When(
 		!val.IsEmpty(option),
 		val.Required,
-		rule,
+		rules,
 	))
 }

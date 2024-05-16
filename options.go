@@ -19,7 +19,7 @@ type VerifyOptions struct {
 	// with SHA256 hashing and compare with the one tha will be passed during proof verification.
 	externalID string
 	// age - a minimal age required to proof some statement.
-	age time.Time
+	age int
 	// citizenships - array of interfaces (for more convenient usage during validation) that stores
 	// all citizenships that accepted in proof. Under the hood, it is a string of Alpha-3 county codes,
 	// described in the ISO 3166 international standard.
@@ -62,7 +62,7 @@ func WithExternalID(identifier string) VerifyOption {
 // age must be in proof.
 func WithAgeAbove(age int) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.age = time.Now().UTC().AddDate(-age, 0, 0)
+		opts.age = age
 	}
 }
 
