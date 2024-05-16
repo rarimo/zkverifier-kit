@@ -308,7 +308,7 @@ func TestWithManyOptions(t *testing.T) {
 		WithAgeAbove(equalAge),
 		WithCitizenships(ukrCitizenship),
 		WithEventID(validEventID),
-		WithRootVerifier(rootVerifier),
+		WithIdentityVerifier(rootVerifier),
 		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {
@@ -329,7 +329,7 @@ func TestWithManyOptionsFail(t *testing.T) {
 		WithAgeAbove(higherAge),
 		WithCitizenships(usaCitizenship),
 		WithEventID(invalidEventID),
-		WithRootVerifier(rootVerifier),
+		WithIdentityVerifier(rootVerifier),
 		WithVerificationKeyFile(verificationKeyFile),
 	)
 	if err != nil {

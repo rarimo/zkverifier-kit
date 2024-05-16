@@ -104,8 +104,8 @@ func WithEventID(identifier string) VerifyOption {
 	}
 }
 
-// WithRootVerifier takes an abstract verifier that should verify IdStateRoot against the identity tree.
-func WithRootVerifier(v IdentityRootVerifier) VerifyOption {
+// WithIdentityVerifier takes an abstract verifier that should verify IdStateRoot against the identity tree.
+func WithIdentityVerifier(v IdentityRootVerifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.rootVerifier = v
 	}
