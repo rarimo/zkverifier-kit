@@ -22,7 +22,7 @@ const (
 	Citizenship               PubSignal = 6
 	EventID                   PubSignal = 9
 	EventData                 PubSignal = 10
-	IdStateHash               PubSignal = 11
+	IdStateRoot               PubSignal = 11
 	Selector                  PubSignal = 12
 	TimestampUpperBound       PubSignal = 14
 	IdentityCounterUpperBound PubSignal = 16
@@ -82,7 +82,7 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 		opts:            mergeOptions(v.opts, options...),
 	}
 
-	if err := v2.validate(proof); err != nil {
+	if err := v2.validateBase(proof); err != nil {
 		return err
 	}
 
@@ -93,88 +93,63 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 	return nil
 }
 
-// validate is a helper method to validate public signals with values stored in opts field.
-func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
+func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
+	signals := zkProof.PubSignals
+
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
-		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(21, 21)),
+		"zk_proof/pub_signals": val.Validate(signals, val.Required, val.Length(21, 21)),
 	}.Filter()
 	if err != nil {
 		return err
 	}
 
-	err = v.opts.rootVerifier.VerifyRoot(zkProof.PubSignals[IdStateHash])
+	err = v.opts.rootVerifier.VerifyRoot(signals[IdStateRoot])
 	if errors.Is(err, identity.ErrContractCall) {
 		return err
 	}
 
-	err = v.validateIdentitiesInputs(zkProof.PubSignals)
-	if err != nil {
-		return err
+	all := val.Errors{
+		"pub_signals/nullifier":                   val.Validate(signals[Nullifier], val.Required),
+		"pub_signals/selector":                    val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
+		"pub_signals/expiration_date_lower_bound": val.Validate(signals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
+		"pub_signals/id_state_hash":               err,
+		"pub_signals/event_id":                    validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
+		"pub_signals/birth_date_upper_bound":      validateOnOptSet(signals[BirthdateUpperBound], v.opts.age, beforeDate(v.opts.age)),
+		"pub_signals/citizenship":                 validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
+		"pub_signals/event_data":                  validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
 	}
 
-	return val.Errors{
-		// Required fields to validate
-		"pub_signals/nullifier":                   val.Validate(zkProof.PubSignals[Nullifier], val.Required),
-		"pub_signals/selector":                    val.Validate(zkProof.PubSignals[Selector], val.Required, val.In(proofSelectorValue)),
-		"pub_signals/expiration_date_lower_bound": val.Validate(zkProof.PubSignals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/id_state_hash":               err,
+	for field, e := range v.validateIdentitiesInputs(signals) {
+		all[field] = e
+	}
 
-		// Configurable fields
-		"pub_signals/event_id": val.Validate(zkProof.PubSignals[EventID], val.When(
-			!val.IsEmpty(v.opts.eventID),
-			val.Required,
-			val.In(v.opts.eventID))),
-		// we use birth_date_upper_bound signal because we prove date range and this value is the upper bound
-		// that is true be the acceptable age
-		"pub_signals/birth_date_upper_bound": val.Validate(zkProof.PubSignals[BirthdateUpperBound], val.When(
-			!val.IsEmpty(v.opts.age),
-			val.Required,
-			beforeDate(v.opts.age),
-		)),
-		"pub_signals/citizenship": val.Validate(decodeInt(zkProof.PubSignals[Citizenship]), val.When(
-			!val.IsEmpty(v.opts.citizenships),
-			val.Required,
-			val.In(v.opts.citizenships...),
-		)),
-		"pub_signals/event_data": val.Validate(zkProof.PubSignals[EventData], val.When(
-			!val.IsEmpty(v.opts.eventData),
-			val.Required,
-			val.In(v.opts.eventData),
-		)),
-	}.Filter()
+	return all.Filter()
 }
 
-func (v *Verifier) validateIdentitiesInputs(signals []string) error {
-	counterUpperBound, err := strconv.ParseInt(signals[IdentityCounterUpperBound], 10, 64)
+func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
+	counter, err := strconv.ParseInt(signals[IdentityCounterUpperBound], 10, 64)
 	if err != nil {
-		return val.Errors{
-			"pub_signals/identity_counter_upperbound": fmt.Errorf("parsing integer: %w", err),
-		}.Filter()
+		return val.Errors{"pub_signals/identity_counter_upper_bound": err}
 	}
 
-	counterErr := val.Errors{
-		"pub_signals/identity_counter_upperbound": val.Validate(counterUpperBound, val.When(
-			v.opts.maxIdentitiesCount != -1,
-			val.Required,
-			val.Max(v.opts.maxIdentitiesCount),
-		)),
-	}.Filter()
+	cErr := val.Validate(counter, val.When(
+		v.opts.maxIdentitiesCount != -1,
+		val.Required,
+		val.Max(v.opts.maxIdentitiesCount),
+	))
+	tErr := validateOnOptSet(
+		signals[TimestampUpperBound],
+		v.opts.maxIdentityCreationTimestamp,
+		beforeDate(v.opts.maxIdentityCreationTimestamp),
+	)
 
-	timestampErr := val.Errors{
-		"pub_signals/timestamp_upperbound": val.Validate(signals[TimestampUpperBound], val.When(
-			!val.IsEmpty(v.opts.lastIdentityCreationTimestamp),
-			val.Required,
-			beforeDate(v.opts.lastIdentityCreationTimestamp),
-		)),
-	}.Filter()
-
-	if counterErr != nil && timestampErr != nil {
-		return errors.Join(counterErr, timestampErr)
+	// OR logic: at least one of the signals should be valid
+	if cErr != nil {
+		return val.Errors{"pub_signals/timestamp_upper_bound": tErr}
 	}
-
-	if (counterErr != nil || timestampErr != nil) && !v.opts.allIdentitiesParamsSet {
-		return errors.Join(counterErr, timestampErr)
+	if tErr != nil {
+		return val.Errors{"pub_signals/identity_counter_upper_bound": cErr}
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"time"
 
+	val "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/zkverifier-kit/identity"
 )
 
@@ -23,24 +24,20 @@ type VerifyOptions struct {
 	// all citizenships that accepted in proof. Under the hood, it is a string of Alpha-3 county codes,
 	// described in the ISO 3166 international standard.
 	citizenships []interface{}
-	// eventData - is any data for which proof was generated, it has to be properly validated BEFORE the proof
-	// verification because the SDK has no idea about the content inside, just checks if the values are the same.
-	eventData interface{}
+	// eventDataRule - validation rule for EventData, where it's either an address or a string
+	eventDataRule val.Rule
 	// eventID - unique identifier associated with a specific event or interaction within
 	// the protocol execution, may be used to keep track of various steps or actions, this
 	// id is a string with a big integer in decimals format
 	eventID string
-	// rootVerifier - provider of identity root verification for IdStateHash
+	// rootVerifier - provider of identity root verification for IdStateRoot
 	rootVerifier IdentityRootVerifier
 	// verificationKeyFile - stores verification key for proofs
 	verificationKeyFile string
-	// maxIdentitiesCount - maximum amount of identities that user can have. Default value is -1
+	// maxIdentitiesCount - maximum amount of reissued identities that user can have
 	maxIdentitiesCount int64
-	// lastIdentityCreationTimestamp - the upper timestamp when user might create their identities
-	lastIdentityCreationTimestamp time.Time
-
-	// helper option to check whether the all values for identities were set, this value is used for validation.
-	allIdentitiesParamsSet bool
+	// maxIdentityCreationTimestamp - the upper bound of timestamp when user could create identities
+	maxIdentityCreationTimestamp time.Time
 }
 
 type IdentityRootVerifier interface {
@@ -81,11 +78,22 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 	}
 }
 
-// WithEventData takes some data for which proof was generated. This value format has to be validated before
+// WithEventData takes raw data for which the proof should be generated. This value format has to be validated before
 // the signals validation because the kit checks ONLY the correspondence of these values.
-func WithEventData(eventData interface{}) VerifyOption {
+func WithEventData(raw interface{}) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.eventData = eventData
+		opts.eventDataRule = matchesData(raw)
+	}
+}
+
+// WithRarimoAddress takes decoded address that must be validated in proof. It
+// requires to have same format that is in proof public signals (for example:
+// bech32 address decoded to base256 without human-readable part)
+//
+// This should not be specified at the same time with WithEventData.
+func WithRarimoAddress(address string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.eventDataRule = matchesAddress(address)
 	}
 }
 
@@ -96,7 +104,7 @@ func WithEventID(identifier string) VerifyOption {
 	}
 }
 
-// WithRootVerifier takes an abstract verifier that should verify idStateRoot signal against identity tree
+// WithRootVerifier takes an abstract verifier that should verify IdStateRoot against the identity tree.
 func WithRootVerifier(v IdentityRootVerifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.rootVerifier = v
@@ -116,24 +124,20 @@ func WithVerificationKeyFile(name string) VerifyOption {
 // WithIdentitiesCounter takes maximum amount of identities that user can have
 // during proof verification.
 //
-// NOTE: WithIdentitiesCounter is tightly connected with WithIdentitiesCreationTimestampLimit.
-// In case if only one of them is present, it is validated as usual, but if there are both
-// options, one of them MAY be invalid. In a nutshell, they work as OR and not AND.
-func WithIdentitiesCounter(maxIdentityCount int64) VerifyOption {
+// On proof verification either this or WithIdentitiesCreationTimestampLimit pass.
+func WithIdentitiesCounter(count int64) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.maxIdentitiesCount = maxIdentityCount
+		opts.maxIdentitiesCount = count
 	}
 }
 
-// WithIdentitiesCreationTimestampLimit takes the upper bound for timestamp when user might create
-// identities.
+// WithIdentitiesCreationTimestampLimit takes the upper bound for timestamp when
+// user might create identities.
 //
-// NOTE: WithIdentitiesCreationTimestampLimit is tightly connected with WithIdentitiesCounter.
-// In case if only one of them is present, it is validated as usual, but if there are both
-// options, one of them MAY be invalid. In a nutshell, they work as OR and not AND.
-func WithIdentitiesCreationTimestampLimit(maxIdentityCreationTimestamp int64) VerifyOption {
+// On proof verification either this or WithIdentitiesCounter should pass.
+func WithIdentitiesCreationTimestampLimit(unixTime int64) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.lastIdentityCreationTimestamp = time.Unix(maxIdentityCreationTimestamp, 0)
+		opts.maxIdentityCreationTimestamp = time.Unix(unixTime, 0)
 	}
 }
 
@@ -141,16 +145,11 @@ func WithIdentitiesCreationTimestampLimit(maxIdentityCreationTimestamp int64) Ve
 // with it, overwriting existing values
 func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	opts.maxIdentitiesCount = -1
+	opts.rootVerifier = identity.NewDisabledVerifier()
 
 	for _, opt := range options {
 		opt(&opts)
 	}
-
-	if opts.rootVerifier == nil {
-		opts.rootVerifier = identity.NewDisabledVerifier()
-	}
-
-	opts.allIdentitiesParamsSet = opts.maxIdentitiesCount == -1 || !opts.lastIdentityCreationTimestamp.IsZero()
 
 	return opts
 }

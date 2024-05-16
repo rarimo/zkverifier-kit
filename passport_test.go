@@ -281,7 +281,7 @@ func TestInvalidIdentitiesParams(t *testing.T) {
 	}
 
 	if err = verifier.validateIdentitiesInputs(inputsCopy); err != nil {
-		if !assert.Equal(t, err.Error(), "pub_signals/identity_counter_upperbound: must be no greater than 3.\npub_signals/timestamp_upperbound: must be no greater than 1000.") {
+		if !assert.Equal(t, err.Error(), "pub_signals/identity_counter_upper_bound: must be no greater than 3.\npub_signals/timestamp_upperbound: must be no greater than 1000.") {
 			t.Fatal(errors.Wrap(err, "validating inputs"))
 		}
 	}
