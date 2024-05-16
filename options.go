@@ -117,7 +117,8 @@ func WithVerificationKeyFile(name string) VerifyOption {
 // during proof verification.
 //
 // NOTE: WithIdentitiesCounter is tightly connected with WithIdentitiesCreationTimestampLimit.
-// At least one of these options should be validated without errors
+// In case if only one of them is present, it is validated as usual, but if there are both
+// options, one of them MAY be invalid. In a nutshell, they work as OR and not AND.
 func WithIdentitiesCounter(maxIdentityCount int64) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.maxIdentitiesCount = maxIdentityCount
@@ -128,7 +129,8 @@ func WithIdentitiesCounter(maxIdentityCount int64) VerifyOption {
 // identities.
 //
 // NOTE: WithIdentitiesCreationTimestampLimit is tightly connected with WithIdentitiesCounter.
-// At least one of these options should be validated without errors
+// In case if only one of them is present, it is validated as usual, but if there are both
+// options, one of them MAY be invalid. In a nutshell, they work as OR and not AND.
 func WithIdentitiesCreationTimestampLimit(maxIdentityCreationTimestamp int64) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.lastIdentityCreationTimestamp = time.Unix(maxIdentityCreationTimestamp, 0)

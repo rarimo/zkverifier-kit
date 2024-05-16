@@ -125,6 +125,8 @@ func (v *Verifier) validate(zkProof zkptypes.ZKProof) error {
 			!val.IsEmpty(v.opts.eventID),
 			val.Required,
 			val.In(v.opts.eventID))),
+		// we use birth_date_upper_bound signal because we prove date range and this value is the upper bound
+		// that is true be the acceptable age
 		"pub_signals/birth_date_upper_bound": val.Validate(zkProof.PubSignals[BirthdateUpperBound], val.When(
 			!val.IsEmpty(v.opts.age),
 			val.Required,
