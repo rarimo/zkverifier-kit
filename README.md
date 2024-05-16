@@ -29,16 +29,15 @@ func main() {
 		kit.WithEventID("304358862882731539112827930982999386691702727710421481944329166126417129570"),
 		kit.WithAgeAbove(18),
 		kit.WithCitizenships("UKR"),
-		kit.WithRootVerifier(rv),
+		kit.WithIdentityVerifier(rv),
 		kit.WithIdentitiesCounter(0),
 		kit.WithIdentitiesCreationTimestampLimit(1847321000),
 	)
 	if err != nil {
 		// ...
 	}
-	// user is the entity in your system, which should have this ID in proof's pub signals
 	// data is an abstract event data that you expect to be in proof
-	err = v.VerifyProof(proof, kit.WithExternalID(user.ID), kit.WithEventData(data))
+	err = v.VerifyProof(proof, kit.WithEventData(data))
 	if err != nil {
 		// ...
 	}
