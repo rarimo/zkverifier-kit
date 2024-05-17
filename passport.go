@@ -114,7 +114,7 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 		"pub_signals/nullifier":                   val.Validate(signals[Nullifier], val.Required),
 		"pub_signals/selector":                    val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
 		"pub_signals/expiration_date_lower_bound": val.Validate(signals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/id_state_hash":               err,
+		"pub_signals/id_state_root":               err,
 		"pub_signals/event_id":                    validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
 		"pub_signals/birth_date_upper_bound": validateOnOptSet(signals[BirthdateUpperBound], v.opts.age, beforeDate(allowedBirthDate)),
