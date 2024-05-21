@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/cosmos/btcutil/bech32"
+	val "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type (
 	eventDataRule struct {
-		want string
+		wantAddr string
+		wantRaw  any
 	}
 
 	timeRule struct {
@@ -21,6 +23,10 @@ type (
 )
 
 func (r eventDataRule) Validate(data interface{}) error {
+	if r.wantAddr == "" {
+		return val.Validate(data, val.In(r.wantRaw))
+	}
+
 	str, ok := data.(string)
 	if !ok {
 		return fmt.Errorf("invalid type: %T, expected string", data)
@@ -31,11 +37,7 @@ func (r eventDataRule) Validate(data interface{}) error {
 		return fmt.Errorf("invalid bech32 string: %w", err)
 	}
 
-	if addr != r.want {
-		return errors.New("event data does not match the address")
-	}
-
-	return nil
+	return val.Validate(addr, val.In(r.wantAddr))
 }
 
 func (r timeRule) Validate(date interface{}) error {
@@ -44,7 +46,7 @@ func (r timeRule) Validate(date interface{}) error {
 		return fmt.Errorf("invalid type: %T, expected string", date)
 	}
 
-	parsed, err := time.Parse("060102", decodeInt(raw))
+	parsed, err := time.Parse("060102", raw)
 	if err != nil {
 		return fmt.Errorf("invalid date string: %w", err)
 	}
@@ -74,8 +76,16 @@ func afterDate(point time.Time) timeRule {
 	}
 }
 
+func matchesData(raw any) eventDataRule {
+	return eventDataRule{
+		wantRaw: raw,
+	}
+}
+
 func matchesAddress(addr string) eventDataRule {
-	return eventDataRule{want: addr}
+	return eventDataRule{
+		wantAddr: addr,
+	}
 }
 
 // decode big int from the proof to string
@@ -85,4 +95,12 @@ func decodeInt(s string) string {
 		b = new(big.Int)
 	}
 	return string(b.Bytes())
+}
+
+func validateOnOptSet(value, option any, rules val.Rule) error {
+	return val.Validate(value, val.When(
+		!val.IsEmpty(option),
+		val.Required,
+		rules,
+	))
 }
