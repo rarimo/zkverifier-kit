@@ -52,7 +52,7 @@ type Verifier struct {
 func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, error) {
 	verifier := Verifier{
 		verificationKey: verificationKey,
-		opts:            mergeOptions(VerifyOptions{}, options...),
+		opts:            mergeOptions(true, VerifyOptions{}, options...),
 	}
 
 	file := verifier.opts.verificationKeyFile
@@ -80,7 +80,7 @@ func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Veri
 func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) error {
 	v2 := Verifier{
 		verificationKey: v.verificationKey,
-		opts:            mergeOptions(v.opts, options...),
+		opts:            mergeOptions(false, v.opts, options...),
 	}
 
 	if err := v2.validateBase(proof); err != nil {

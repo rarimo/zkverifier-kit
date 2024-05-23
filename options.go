@@ -137,10 +137,12 @@ func WithIdentitiesCreationTimestampLimit(unixTime int64) VerifyOption {
 
 // mergeOptions collects all parameters together and fills VerifyOptions struct
 // with it, overwriting existing values
-func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
-	opts.maxIdentitiesCount = -1
-	opts.age = -1
-	opts.rootVerifier = identity.NewDisabledVerifier()
+func mergeOptions(withDefaults bool, opts VerifyOptions, options ...VerifyOption) VerifyOptions {
+	if withDefaults {
+		opts.maxIdentitiesCount = -1
+		opts.age = -1
+		opts.rootVerifier = identity.NewDisabledVerifier()
+	}
 
 	for _, opt := range options {
 		opt(&opts)

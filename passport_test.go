@@ -28,7 +28,7 @@ const (
 	validEventID   = "304358862882731539112827930982999386691702727710421481944329166126417129570"
 	invalidEventID = "AC42D1A986804618C7A793FBE814D9B31E47BE51E082806363DCA6958F3062"
 
-	storedRoot = "1ca2515c70356a3b62e3a00e6f1fb0af4f5478a59de5d800d0efd8a74ec5467b"
+	storedRoot = "1fd232b83b1927f2a8ede62ffe15c31d18782dd513e08f4aabeaf2e8e4c32417"
 
 	maxTimestamp = math.MaxInt32
 )
@@ -169,6 +169,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Matching citizenship",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithCitizenships(ukrCitizenship),
 			},
 			want: "",
@@ -177,6 +178,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Non-matching citizenship",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithCitizenships(engCitizenship, usaCitizenship),
 			},
 			want: "pub_signals/citizenship: must be a valid value",
@@ -185,6 +187,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid address",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithRarimoAddress(validAddress),
 			},
 			want: "",
@@ -193,6 +196,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Invalid address",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithRarimoAddress(invalidAddress),
 			},
 			want: "pub_signals/event_data: must be a valid value",
@@ -201,6 +205,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid event data",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithEventData(validEventData),
 			},
 			want: "",
@@ -209,6 +214,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Invalid event data",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithEventData(invalidEventData),
 			},
 			want: "pub_signals/event_data: must be a valid value",
@@ -217,6 +223,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Lower age",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithAgeAbove(lowerAge),
 			}, verifyOpts: []VerifyOption{
 				WithAgeAbove(lowerAge),
@@ -228,6 +235,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Equal age",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithAgeAbove(equalAge),
 			},
 			want: "",
@@ -236,6 +244,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Higher age",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithAgeAbove(higherAge),
 			},
 			verifyOpts: []VerifyOption{
@@ -247,6 +256,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid event ID",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithEventID(validEventID),
 			},
 			want: "",
@@ -255,6 +265,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Invalid event ID",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithEventID(invalidEventID),
 			},
 			want: "pub_signals/event_id: must be a valid value",
@@ -263,6 +274,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid counter without timestamp",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithIdentitiesCounter(999),
 			},
 			want: "",
@@ -271,6 +283,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid timestamp without counter",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithIdentitiesCreationTimestampLimit(maxTimestamp),
 			},
 			want: "",
@@ -279,6 +292,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid counter with invalid timestamp",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithIdentitiesCounter(999),
 				WithIdentitiesCreationTimestampLimit(0),
 			},
@@ -288,6 +302,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Valid timestamp with invalid counter",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithIdentitiesCounter(0),
 				WithIdentitiesCreationTimestampLimit(maxTimestamp),
 			},
@@ -297,6 +312,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "Invalid counter and timestamp",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 				WithIdentitiesCounter(0),
 				WithIdentitiesCreationTimestampLimit(0),
 			},
@@ -310,6 +326,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "No options",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
+				WithProofSelectorValue("23073"),
 			},
 			want: "",
 		},
@@ -317,6 +334,7 @@ func TestVerifyProof(t *testing.T) {
 			name: "All valid options",
 			initOpts: []VerifyOption{
 				WithAgeAbove(equalAge),
+				WithProofSelectorValue("23073"),
 				WithCitizenships(ukrCitizenship),
 				WithEventID(validEventID),
 				WithIdentityVerifier(defaultVerifier),
@@ -334,6 +352,7 @@ func TestVerifyProof(t *testing.T) {
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
 				WithIdentityVerifier(badVerifier),
+				WithProofSelectorValue("23073"),
 			},
 			verifyOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
@@ -343,6 +362,9 @@ func TestVerifyProof(t *testing.T) {
 		},
 		{
 			name: "Invalid verification key",
+			initOpts: []VerifyOption{
+				WithProofSelectorValue("23073"),
+			},
 			key:  invalidKey,
 			want: "groth16 verification failed",
 		},
