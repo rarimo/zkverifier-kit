@@ -59,7 +59,7 @@ func (r timeRule) Validate(date interface{}) error {
 
 	if r.isEqualDate {
 		if !datesEqual(r.point, parsed) {
-			return errors.New("dates is not equal")
+			return errors.New("dates are not equal")
 		}
 		return nil
 	}
