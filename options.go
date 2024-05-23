@@ -32,6 +32,8 @@ type VerifyOptions struct {
 	maxIdentitiesCount int64
 	// maxIdentityCreationTimestamp - the upper bound of timestamp when user could create identities
 	maxIdentityCreationTimestamp time.Time
+	// proofSelectorValue - bit mask for selecting fields for verification
+	proofSelectorValue string
 }
 
 type IdentityRootVerifier interface {
@@ -86,6 +88,13 @@ func WithRarimoAddress(address string) VerifyOption {
 func WithEventID(identifier string) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.eventID = identifier
+	}
+}
+
+// WithProofSelectorValue takes selector as a string that represents bit mask in a decimal format.
+func WithProofSelectorValue(selector string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.proofSelectorValue = selector
 	}
 }
 
