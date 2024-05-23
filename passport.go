@@ -31,8 +31,6 @@ const (
 	IdentityCounterUpperBound PubSignal = 16
 	BirthdateUpperBound       PubSignal = 18
 	ExpirationDateLowerBound  PubSignal = 19
-
-	proofSelectorValue = "23073"
 )
 
 var ErrVerificationKeyRequired = errors.New("verification key is required")
@@ -114,7 +112,7 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 
 	all := val.Errors{
 		"pub_signals/nullifier":     val.Validate(signals[Nullifier], val.Required),
-		"pub_signals/selector":      val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
+		"pub_signals/selector":      val.Validate(signals[Selector], val.Required, val.In(v.opts.proofSelectorValue)),
 		"pub_signals/id_state_root": err,
 		"pub_signals/event_id":      validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
