@@ -134,12 +134,12 @@ func (v *Verifier) validateBirthDate(signals []string) val.Errors {
 
 	return val.Errors{
 		"pub_signals/birth_date": val.Validate(signals[BirthDate], val.When(
-			!isEmptyZKDate(signals[BirthDate]) && v.opts.age != -1,
+			!isEmptyZKDate(signals[BirthDate]) || v.opts.age != -1,
 			val.Required,
 			beforeDate(allowedBirthDate),
 		)),
 		"pub_signals/birth_date_upper_bound": val.Validate(signals[BirthdateUpperBound], val.When(
-			!isEmptyZKDate(signals[BirthdateUpperBound]) && v.opts.age != -1,
+			!isEmptyZKDate(signals[BirthdateUpperBound]) || v.opts.age != -1,
 			val.Required,
 			equalDate(allowedBirthDate),
 		)),
