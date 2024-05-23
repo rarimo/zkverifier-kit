@@ -3,6 +3,7 @@ package zkverifier_kit
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strconv"
 	"time"
@@ -19,6 +20,8 @@ type PubSignal int
 // may change depending on the proof and the values that it reveals.
 const (
 	Nullifier                 PubSignal = 0
+	BirthDate                 PubSignal = 1
+	ExpirationDate            PubSignal = 2
 	Citizenship               PubSignal = 6
 	EventID                   PubSignal = 9
 	EventData                 PubSignal = 10
@@ -29,7 +32,7 @@ const (
 	BirthdateUpperBound       PubSignal = 18
 	ExpirationDateLowerBound  PubSignal = 19
 
-	proofSelectorValue = "39"
+	proofSelectorValue = "23073"
 )
 
 var ErrVerificationKeyRequired = errors.New("verification key is required")
@@ -98,7 +101,7 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
-		"zk_proof/pub_signals": val.Validate(signals, val.Required, val.Length(21, 21)),
+		"zk_proof/pub_signals": val.Validate(signals, val.Required, val.Length(22, 22)),
 	}.Filter()
 	if err != nil {
 		return err
@@ -109,24 +112,56 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 		return err
 	}
 
-	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
 	all := val.Errors{
-		"pub_signals/nullifier":                   val.Validate(signals[Nullifier], val.Required),
-		"pub_signals/selector":                    val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
-		"pub_signals/expiration_date_lower_bound": val.Validate(signals[ExpirationDateLowerBound], val.Required, afterDate(time.Now().UTC())),
-		"pub_signals/id_state_root":               err,
-		"pub_signals/event_id":                    validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
+		"pub_signals/nullifier":     val.Validate(signals[Nullifier], val.Required),
+		"pub_signals/selector":      val.Validate(signals[Selector], val.Required, val.In(proofSelectorValue)),
+		"pub_signals/id_state_root": err,
+		"pub_signals/event_id":      validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
-		"pub_signals/birth_date_upper_bound": validateOnOptSet(signals[BirthdateUpperBound], v.opts.age, beforeDate(allowedBirthDate)),
-		"pub_signals/citizenship":            validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
-		"pub_signals/event_data":             validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
+		"pub_signals/citizenship": validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
+		"pub_signals/event_data":  validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
 	}
 
-	for field, e := range v.validateIdentitiesInputs(signals) {
-		all[field] = e
-	}
+	maps.Copy(all, v.validateBirthDate(signals))
+	maps.Copy(all, v.validatePassportExpiration(signals))
+	maps.Copy(all, v.validateIdentitiesInputs(signals))
 
 	return all.Filter()
+}
+
+func (v *Verifier) validateBirthDate(signals []string) val.Errors {
+	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
+
+	return val.Errors{
+		"pub_signals/birth_date": val.Validate(signals[BirthDate], val.When(
+			!isEmptyZKDate(signals[BirthDate]) && v.opts.age != -1,
+			val.Required,
+			beforeDate(allowedBirthDate),
+		)),
+		"pub_signals/birth_date_upper_bound": val.Validate(signals[BirthdateUpperBound], val.When(
+			!isEmptyZKDate(signals[BirthdateUpperBound]) && v.opts.age != -1,
+			val.Required,
+			equalDate(allowedBirthDate),
+		)),
+	}
+}
+
+func (v *Verifier) validatePassportExpiration(signals []string) val.Errors {
+	return val.Errors{
+		"pub_signals/expiration_date_lower_bound": val.Validate(
+			signals[ExpirationDateLowerBound],
+			val.When(!isEmptyZKDate(signals[ExpirationDateLowerBound]), equalDate(time.Now().UTC())),
+		),
+		"pub_signals/expiration_date": val.Validate(
+			signals[ExpirationDate],
+			val.When(!isEmptyZKDate(signals[ExpirationDate]), afterDate(time.Now().UTC())),
+		),
+	}
+}
+
+// ZKP sets dates to 0 or 52983525027888 if date is not used or is not present in selector
+func isEmptyZKDate(dateStr string) bool {
+	return dateStr == "0" || dateStr == "52983525027888"
 }
 
 func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
@@ -135,15 +170,22 @@ func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
 		return val.Errors{"pub_signals/identity_counter_upper_bound": err}
 	}
 
+	// ZKP generates a timestamp upper bound as regular unix timestamp, so or time validation is not suitable here
+	timestamp, err := strconv.ParseInt(signals[TimestampUpperBound], 10, 64)
+	if err != nil {
+		return val.Errors{"pub_signals/timestamp_upper_bound": err}
+	}
+
 	cErr := val.Validate(counter, val.When(
 		v.opts.maxIdentitiesCount != -1,
 		val.Required,
 		val.Max(v.opts.maxIdentitiesCount),
 	))
+
 	tErr := validateOnOptSet(
-		signals[TimestampUpperBound],
+		time.Unix(timestamp, 0),
 		v.opts.maxIdentityCreationTimestamp,
-		beforeDate(v.opts.maxIdentityCreationTimestamp),
+		val.Max(v.opts.maxIdentityCreationTimestamp),
 	)
 
 	// OR logic: at least one of the signals should be valid

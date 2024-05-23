@@ -130,6 +130,7 @@ func WithIdentitiesCreationTimestampLimit(unixTime int64) VerifyOption {
 // with it, overwriting existing values
 func mergeOptions(opts VerifyOptions, options ...VerifyOption) VerifyOptions {
 	opts.maxIdentitiesCount = -1
+	opts.age = -1
 	opts.rootVerifier = identity.NewDisabledVerifier()
 
 	for _, opt := range options {

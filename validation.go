@@ -17,24 +17,25 @@ type (
 	}
 
 	timeRule struct {
-		point    time.Time
-		isBefore bool
+		point       time.Time
+		isBefore    bool
+		isEqualDate bool
 	}
 )
 
 func (r eventDataRule) Validate(data interface{}) error {
-	if r.wantAddr == "" {
-		return val.Validate(data, val.In(r.wantRaw))
-	}
-
 	str, ok := data.(string)
 	if !ok {
 		return fmt.Errorf("invalid type: %T, expected string", data)
 	}
 
-	addr, err := bech32.EncodeFromBase256("rarimo", []byte(decodeInt(str)))
+	if r.wantAddr == "" {
+		return val.Validate([]byte(decodeInt(str)), val.In(r.wantRaw))
+	}
+
+	addr, err := bech32.Encode("rarimo", []byte(decodeInt(str)))
 	if err != nil {
-		return fmt.Errorf("invalid bech32 string: %w", err)
+		return fmt.Errorf("invalid bech32 address: %w", err)
 	}
 
 	return val.Validate(addr, val.In(r.wantAddr))
@@ -46,9 +47,21 @@ func (r timeRule) Validate(date interface{}) error {
 		return fmt.Errorf("invalid type: %T, expected string", date)
 	}
 
-	parsed, err := time.Parse("060102", raw)
+	bigDecimalDate, ok := new(big.Int).SetString(raw, 10)
+	if !ok {
+		return fmt.Errorf("failed to set string: %T", date)
+	}
+
+	parsed, err := time.Parse("020106", string(bigDecimalDate.Bytes()))
 	if err != nil {
 		return fmt.Errorf("invalid date string: %w", err)
+	}
+
+	if r.isEqualDate {
+		if !datesEqual(r.point, parsed) {
+			return errors.New("dates is not equal")
+		}
+		return nil
 	}
 
 	if r.isBefore && parsed.After(r.point) {
@@ -62,29 +75,45 @@ func (r timeRule) Validate(date interface{}) error {
 	return nil
 }
 
+func datesEqual(one time.Time, another time.Time) bool {
+	return one.Format(time.DateOnly) == another.Format(time.DateOnly)
+}
+
 func beforeDate(point time.Time) timeRule {
 	return timeRule{
-		point:    point,
-		isBefore: true,
+		point:       point,
+		isBefore:    true,
+		isEqualDate: false,
 	}
 }
 
 func afterDate(point time.Time) timeRule {
 	return timeRule{
-		point:    point,
-		isBefore: false,
+		point:       point,
+		isBefore:    false,
+		isEqualDate: false,
+	}
+}
+
+func equalDate(point time.Time) timeRule {
+	return timeRule{
+		point:       point,
+		isBefore:    false,
+		isEqualDate: true,
 	}
 }
 
 func matchesData(raw any) eventDataRule {
 	return eventDataRule{
-		wantRaw: raw,
+		wantRaw:  raw,
+		wantAddr: "",
 	}
 }
 
 func matchesAddress(addr string) eventDataRule {
 	return eventDataRule{
 		wantAddr: addr,
+		wantRaw:  nil,
 	}
 }
 
