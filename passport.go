@@ -130,20 +130,16 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 }
 
 func (v *Verifier) validateBirthDate(signals []string) val.Errors {
-	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
-
-	return val.Errors{
-		"pub_signals/birth_date": val.Validate(signals[BirthDate], val.When(
-			!isEmptyZKDate(signals[BirthDate]) || v.opts.age != -1,
-			val.Required,
-			beforeDate(allowedBirthDate),
-		)),
-		"pub_signals/birth_date_upper_bound": val.Validate(signals[BirthdateUpperBound], val.When(
-			!isEmptyZKDate(signals[BirthdateUpperBound]) || v.opts.age != -1,
-			val.Required,
-			equalDate(allowedBirthDate),
-		)),
+	if v.opts.age == -1 {
+		return val.Errors{}
 	}
+
+	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
+	return ORError(
+		val.Validate(signals[BirthDate], val.Required, beforeDate(allowedBirthDate)),
+		val.Validate(signals[BirthdateUpperBound], val.Required, equalDate(allowedBirthDate)),
+		[2]string{"pub_signals/birth_date", "pub_signals/birth_date_upper_bound"},
+	)
 }
 
 func (v *Verifier) validatePassportExpiration(signals []string) val.Errors {
@@ -176,25 +172,29 @@ func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
 		return val.Errors{"pub_signals/timestamp_upper_bound": err}
 	}
 
-	cErr := val.Validate(counter, val.When(
-		v.opts.maxIdentitiesCount != -1,
-		val.Required,
-		val.Max(v.opts.maxIdentitiesCount),
-	))
-
-	tErr := validateOnOptSet(
-		time.Unix(timestamp, 0),
-		v.opts.maxIdentityCreationTimestamp,
-		val.Max(v.opts.maxIdentityCreationTimestamp),
+	return ORError(
+		val.Validate(counter, val.When(
+			v.opts.maxIdentitiesCount != -1,
+			val.Required,
+			val.Max(v.opts.maxIdentitiesCount),
+		)),
+		validateOnOptSet(
+			time.Unix(timestamp, 0),
+			v.opts.maxIdentityCreationTimestamp,
+			val.Max(v.opts.maxIdentityCreationTimestamp),
+		),
+		[2]string{"pub_signals/identity_counter_upper_bound", "pub_signals/timestamp_upper_bound"},
 	)
+}
 
+func ORError(one, another error, fieldNames [2]string) val.Errors {
 	// OR logic: at least one of the signals should be valid
-	if cErr != nil {
-		return val.Errors{"pub_signals/timestamp_upper_bound": tErr}
+	switch {
+	case one != nil:
+		return val.Errors{fieldNames[1]: another}
+	case another != nil:
+		return val.Errors{fieldNames[0]: one}
+	default:
+		return val.Errors{}
 	}
-	if tErr != nil {
-		return val.Errors{"pub_signals/identity_counter_upper_bound": cErr}
-	}
-
-	return nil
 }

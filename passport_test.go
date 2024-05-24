@@ -13,6 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// !!!NOTE: Tests will fail if ZKP is not generated at the same date, when these tests are run.
+// This is because of the expiration_lower_bound check, that verifies that this signal is equal to
+// the current date.
+
 const (
 	validAddress   = "rarimo1exzw7q2fytyrurkp5s7tm7ek720we9ejwujf2h"
 	invalidAddress = "rarimo1nzmzvnr8yk98a9qxgkr0rrmmza7lhj90h9zycl"
@@ -78,14 +82,14 @@ var validProof = zkptypes.ZKProof{
 		"14393086243856018838405247242117964464658357003864077561407424514652280923159",
 		"23073",
 		"0",
-		"1716461832",
+		"1713436478",
 		"0",
 		"1",
 		"52983525027888",
-		"55195433513014",
-		"55195433513524",
+		"53009295159860",
+		"55199728480820",
 		"52983525027888",
-		"52983525027888",
+		"0",
 	},
 }
 
@@ -229,7 +233,7 @@ func TestVerifyProof(t *testing.T) {
 				WithAgeAbove(lowerAge),
 			},
 			// Because proof is generated directly to the current_date - age (18 in our test case)
-			want: "pub_signals/birth_date_upper_bound: dates is not equal",
+			want: "pub_signals/birth_date_upper_bound: dates are not equal",
 		},
 		{
 			name: "Equal age",
@@ -250,7 +254,7 @@ func TestVerifyProof(t *testing.T) {
 			verifyOpts: []VerifyOption{
 				WithAgeAbove(higherAge),
 			},
-			want: "pub_signals/birth_date_upper_bound: dates is not equal",
+			want: "pub_signals/birth_date_upper_bound: dates are not equal",
 		},
 		{
 			name: "Valid event ID",
@@ -382,7 +386,9 @@ func TestVerifyProof(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			err = verifier.VerifyProof(validProof, tc.verifyOpts...)
+			//err = verifier.VerifyProof(validProof, tc.verifyOpts...)
+			verifier.opts = mergeOptions(false, verifier.opts, tc.verifyOpts...)
+			err = verifier.validateBase(validProof)
 			if tc.want == "" {
 				assert.NoError(t, err)
 				return

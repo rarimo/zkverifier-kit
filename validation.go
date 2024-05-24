@@ -65,7 +65,7 @@ func (r timeRule) Validate(date interface{}) error {
 		return fmt.Errorf("failed to set string: %T", date)
 	}
 
-	parsed, err := time.Parse("020106", string(bigDecimalDate.Bytes()))
+	parsed, err := time.Parse("060102", string(bigDecimalDate.Bytes()))
 	if err != nil {
 		return fmt.Errorf("invalid date string: %w", err)
 	}
