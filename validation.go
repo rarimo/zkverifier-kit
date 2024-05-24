@@ -1,12 +1,15 @@
 package zkverifier_kit
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"time"
 
 	"github.com/cosmos/btcutil/bech32"
+	"github.com/ethereum/go-ethereum/common"
 	val "github.com/go-ozzo/ozzo-validation/v4"
 )
 
@@ -28,17 +31,27 @@ func (r eventDataRule) Validate(data interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid type: %T, expected string", data)
 	}
+	decodedData := []byte(decodeInt(str))
 
 	if r.wantAddr == "" {
-		return val.Validate([]byte(decodeInt(str)), val.In(r.wantRaw))
+		return val.Validate(decodedData, val.In(r.wantRaw))
 	}
 
-	addr, err := bech32.Encode("rarimo", []byte(decodeInt(str)))
+	if isEthereumAddress(decodedData) {
+		return val.Validate(common.BytesToAddress(decodedData).String(), val.In(r.wantRaw))
+	}
+
+	addr, err := bech32.Encode("rarimo", decodedData)
 	if err != nil {
 		return fmt.Errorf("invalid bech32 address: %w", err)
 	}
 
 	return val.Validate(addr, val.In(r.wantAddr))
+}
+
+func isEthereumAddress(data []byte) bool {
+	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
+	return re.MatchString(hex.EncodeToString(data))
 }
 
 func (r timeRule) Validate(date interface{}) error {

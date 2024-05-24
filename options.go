@@ -84,6 +84,16 @@ func WithRarimoAddress(address string) VerifyOption {
 	}
 }
 
+// WithEthereumAddress takes decoded address that must be validated in proof. It
+// requires to have same format that is in proof public signals.
+//
+// This should not be specified at the same time with WithEventData.
+func WithEthereumAddress(address string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.eventDataRule = matchesAddress(address)
+	}
+}
+
 // WithEventID takes event identifier as a string that represents big number in a decimal format.
 func WithEventID(identifier string) VerifyOption {
 	return func(opts *VerifyOptions) {
