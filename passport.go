@@ -131,7 +131,7 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 
 func (v *Verifier) validateBirthDate(signals []string) val.Errors {
 	if v.opts.age == -1 {
-		return val.Errors{}
+		return nil
 	}
 
 	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
@@ -195,6 +195,6 @@ func ORError(one, another error, fieldNames [2]string) val.Errors {
 	case another != nil:
 		return val.Errors{fieldNames[0]: one}
 	default:
-		return val.Errors{}
+		return nil
 	}
 }

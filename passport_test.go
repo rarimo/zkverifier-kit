@@ -386,9 +386,7 @@ func TestVerifyProof(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			//err = verifier.VerifyProof(validProof, tc.verifyOpts...)
-			verifier.opts = mergeOptions(false, verifier.opts, tc.verifyOpts...)
-			err = verifier.validateBase(validProof)
+			err = verifier.VerifyProof(validProof, tc.verifyOpts...)
 			if tc.want == "" {
 				assert.NoError(t, err)
 				return
