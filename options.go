@@ -67,7 +67,8 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 
 // WithEventData takes raw data for which the proof should be generated. This value format has to be validated before
 // the signals validation because the kit checks ONLY the correspondence of these values. The raw value should be
-// exactly in the same format as it was passed in the proof generation process.
+// exactly in the same format as it was passed in the proof generation process and the length of the byte array is
+// up to 31 bytes.
 //
 // Example: service takes Ethereum address, validates address format on their side, then converts address to bytes
 // array and passes that bytes to the event data input in proof generation. After this precisely the same value has
