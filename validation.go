@@ -1,20 +1,17 @@
 package zkverifier_kit
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/cosmos/btcutil/bech32"
 	val "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type (
-	eventDataRule struct {
-		wantAddr string
-		wantRaw  any
-	}
+	eventData []byte
 
 	timeRule struct {
 		point       time.Time
@@ -23,22 +20,17 @@ type (
 	}
 )
 
-func (r eventDataRule) Validate(data interface{}) error {
+func (val eventData) Validate(data interface{}) error {
 	str, ok := data.(string)
 	if !ok {
 		return fmt.Errorf("invalid type: %T, expected string", data)
 	}
 
-	if r.wantAddr == "" {
-		return val.Validate([]byte(decodeInt(str)), val.In(r.wantRaw))
+	if !bytes.Equal([]byte(decodeInt(str)), val) {
+		return fmt.Errorf("event data does not match")
 	}
 
-	addr, err := bech32.Encode("rarimo", []byte(decodeInt(str)))
-	if err != nil {
-		return fmt.Errorf("invalid bech32 address: %w", err)
-	}
-
-	return val.Validate(addr, val.In(r.wantAddr))
+	return nil
 }
 
 func (r timeRule) Validate(date interface{}) error {
@@ -52,7 +44,7 @@ func (r timeRule) Validate(date interface{}) error {
 		return fmt.Errorf("failed to set string: %T", date)
 	}
 
-	parsed, err := time.Parse("020106", string(bigDecimalDate.Bytes()))
+	parsed, err := time.Parse("060102", string(bigDecimalDate.Bytes()))
 	if err != nil {
 		return fmt.Errorf("invalid date string: %w", err)
 	}
@@ -100,20 +92,6 @@ func equalDate(point time.Time) timeRule {
 		point:       point,
 		isBefore:    false,
 		isEqualDate: true,
-	}
-}
-
-func matchesData(raw any) eventDataRule {
-	return eventDataRule{
-		wantRaw:  raw,
-		wantAddr: "",
-	}
-}
-
-func matchesAddress(addr string) eventDataRule {
-	return eventDataRule{
-		wantAddr: addr,
-		wantRaw:  nil,
 	}
 }
 

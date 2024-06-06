@@ -66,21 +66,16 @@ func WithCitizenships(citizenships ...string) VerifyOption {
 }
 
 // WithEventData takes raw data for which the proof should be generated. This value format has to be validated before
-// the signals validation because the kit checks ONLY the correspondence of these values.
-func WithEventData(raw interface{}) VerifyOption {
-	return func(opts *VerifyOptions) {
-		opts.eventDataRule = matchesData(raw)
-	}
-}
-
-// WithRarimoAddress takes decoded address that must be validated in proof. It
-// requires to have same format that is in proof public signals (for example:
-// bech32 address decoded to base256 without human-readable part)
+// the signals validation because the kit checks ONLY the correspondence of these values. The raw value should be
+// exactly in the same format as it was passed in the proof generation process and the length of the byte array is
+// up to 31 bytes.
 //
-// This should not be specified at the same time with WithEventData.
-func WithRarimoAddress(address string) VerifyOption {
+// Example: service takes Ethereum address, validates address format on their side, then converts address to bytes
+// array and passes that bytes to the event data input in proof generation. After this precisely the same value has
+// to be passed in the WithEventData function.
+func WithEventData(raw []byte) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.eventDataRule = matchesAddress(address)
+		opts.eventDataRule = eventData(raw)
 	}
 }
 
