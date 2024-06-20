@@ -175,7 +175,6 @@ func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
 	return ORError(
 		val.Validate(counter, val.When(
 			v.opts.maxIdentitiesCount != -1,
-			val.Required,
 			val.Max(v.opts.maxIdentitiesCount),
 		)),
 		validateOnOptSet(
