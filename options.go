@@ -12,6 +12,7 @@ import (
 // structure validation `github.com/go-ozzo/ozzo-validation/v4` is used, so IsEmpty method has to
 // work correct with each field in order to have supposed logic.
 type VerifyOptions struct {
+	proofType proofType
 	// age - a minimal age required to proof some statement.
 	age int
 	// citizenships - array of interfaces (for more convenient usage during validation) that stores
@@ -44,6 +45,14 @@ type IdentityRootVerifier interface {
 // It allows to create convenient methods With... that will add new value to the fields for
 // that structure.
 type VerifyOption func(*VerifyOptions)
+
+// WithProofType select your proof type to use specific pub signals indexes.
+// Default is GlobalPassport.
+func WithProofType(t proofType) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.proofType = t
+	}
+}
 
 // WithAgeAbove adds new age check. It is an integer (e.g. 10, 18, 21) above which the person's
 // age must be in proof.
@@ -101,7 +110,7 @@ func WithIdentityVerifier(v IdentityRootVerifier) VerifyOption {
 }
 
 // WithVerificationKeyFile takes a string that represents the name of the file
-// with verification key. The file is read on NewPassportVerifier call. If you
+// with verification key. The file is read on NewVerifier call. If you
 // are providing this option along with the key argument, the latter will be
 // overwritten by the read from file.
 func WithVerificationKeyFile(name string) VerifyOption {
@@ -137,6 +146,7 @@ func mergeOptions(withDefaults bool, opts VerifyOptions, options ...VerifyOption
 		opts.maxIdentitiesCount = -1
 		opts.age = -1
 		opts.rootVerifier = identity.NewDisabledVerifier()
+		opts.proofType = GlobalPassport
 	}
 
 	for _, opt := range options {
