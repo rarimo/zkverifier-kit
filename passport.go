@@ -99,15 +99,32 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 		return err
 	}
 
+	var (
+		now       = time.Now().UTC()
+		today     = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		yesterday = today.AddDate(0, 0, -1)
+		tomorrow  = today.AddDate(0, 0, 1)
+	)
+
 	all := val.Errors{
-		"pub_signals/nullifier":     val.Validate(signals.Get(Nullifier), val.Required),
-		"pub_signals/selector":      val.Validate(signals.Get(Selector), val.Required, val.In(v.opts.proofSelectorValue)),
+		"pub_signals/nullifier": val.Validate(signals.Get(Nullifier), val.Required),
+		"pub_signals/selector":  val.Validate(signals.Get(Selector), val.Required, val.In(v.opts.proofSelectorValue)),
+		"pub_signals/current_date": val.Validate(signals.Get(CurrentDate), val.When(
+			v.opts.proofType == GeorgianPassport,
+			val.Required,
+			afterDate(yesterday),
+			beforeDate(tomorrow),
+		)),
+		"pub_signals/personal_number_hash": val.Validate(signals.Get(PersonalNumberHash), val.When(
+			v.opts.proofType == GeorgianPassport,
+			val.Required,
+		)),
 		"pub_signals/id_state_root": err,
 		"pub_signals/event_id":      validateOnOptSet(signals.Get(EventID), v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
 		"pub_signals/citizenship":   validateOnOptSet(decodeInt(signals.Get(Citizenship)), v.opts.citizenships, val.In(v.opts.citizenships...)),
 		"pub_signals/event_data":    validateOnOptSet(signals.Get(EventData), v.opts.eventDataRule, v.opts.eventDataRule),
-		"pub_signals/document_type": val.Validate(signals.Get(DocumentType), val.When(v.opts.proofType == GeorgianPassport, val.Required, val.In())),
+		"pub_signals/document_type": validateOnOptSet(decodeInt(signals.Get(DocumentType)), v.opts.documentType, val.In(v.opts.documentType)),
 	}
 
 	maps.Copy(all, v.validateBirthDate(signals))

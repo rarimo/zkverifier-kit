@@ -35,6 +35,8 @@ type VerifyOptions struct {
 	maxIdentityCreationTimestamp time.Time
 	// proofSelectorValue - bit mask for selecting fields for verification
 	proofSelectorValue string
+	// documentType - provided document type name without UTF-8 encoding
+	documentType string
 }
 
 type IdentityRootVerifier interface {
@@ -136,6 +138,13 @@ func WithIdentitiesCounter(count int64) VerifyOption {
 func WithIdentitiesCreationTimestampLimit(unixTime int64) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.maxIdentityCreationTimestamp = time.Unix(unixTime, 0)
+	}
+}
+
+// WithDocumentType is used for DocumentType verification in GeorgianPassport proof
+func WithDocumentType(docType string) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.documentType = docType
 	}
 }
 
