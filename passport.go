@@ -14,25 +14,6 @@ import (
 	"github.com/rarimo/zkverifier-kit/identity"
 )
 
-type PubSignal int
-
-// predefined values and positions for public inputs in zero knowledge proof. It
-// may change depending on the proof and the values that it reveals.
-const (
-	Nullifier                 PubSignal = 0
-	BirthDate                 PubSignal = 1
-	ExpirationDate            PubSignal = 2
-	Citizenship               PubSignal = 6
-	EventID                   PubSignal = 9
-	EventData                 PubSignal = 10
-	IdStateRoot               PubSignal = 11
-	Selector                  PubSignal = 12
-	TimestampUpperBound       PubSignal = 14
-	IdentityCounterUpperBound PubSignal = 16
-	BirthdateUpperBound       PubSignal = 18
-	ExpirationDateLowerBound  PubSignal = 19
-)
-
 var ErrVerificationKeyRequired = errors.New("verification key is required")
 
 // Verifier is a structure representing some instance for validation and verification zero knowledge proof
@@ -44,12 +25,12 @@ type Verifier struct {
 	opts VerifyOptions
 }
 
-// NewPassportVerifier creates a new Verifier instance. VerificationKey is
+// NewVerifier creates a new Verifier instance. VerificationKey is
 // required to VerifyGroth16, usually you should just read it from file. Optional
 // parameters will take part in proof verification on Verifier.VerifyProof call.
 //
 // If you provided WithVerificationKeyFile option, you can pass nil as the first arg.
-func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, error) {
+func NewVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, error) {
 	verifier := Verifier{
 		verificationKey: verificationKey,
 		opts:            mergeOptions(true, VerifyOptions{}, options...),
@@ -74,7 +55,7 @@ func NewPassportVerifier(verificationKey []byte, options ...VerifyOption) (*Veri
 
 // VerifyProof method verifies iden3 ZK proof and checks public signals. The
 // public signals to validate are defined in the VerifyOption list. Firstly, you
-// pass initial values to verify in NewPassportVerifier. In case when custom
+// pass initial values to verify in NewVerifier. In case when custom
 // values are required for different proofs, the options can be passed to
 // VerifyProof, which override the initial ones.
 func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) error {
@@ -97,29 +78,53 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 }
 
 func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
-	signals := zkProof.PubSignals
+	var (
+		signals     = PubSignalGetter{ProofType: v.opts.proofType, Signals: zkProof.PubSignals}
+		pubSigCount = 22
+	)
+	if v.opts.proofType == GeorgianPassport {
+		pubSigCount = 24
+	}
 
 	err := val.Errors{
 		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
-		"zk_proof/pub_signals": val.Validate(signals, val.Required, val.Length(22, 22)),
+		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(pubSigCount, pubSigCount)),
 	}.Filter()
 	if err != nil {
 		return err
 	}
 
-	err = v.opts.rootVerifier.VerifyRoot(signals[IdStateRoot])
+	err = v.opts.rootVerifier.VerifyRoot(signals.Get(IdStateRoot))
 	if errors.Is(err, identity.ErrContractCall) {
 		return err
 	}
 
+	var (
+		now       = time.Now().UTC()
+		today     = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		yesterday = today.AddDate(0, 0, -1)
+		tomorrow  = today.AddDate(0, 0, 1)
+	)
+
 	all := val.Errors{
-		"pub_signals/nullifier":     val.Validate(signals[Nullifier], val.Required),
-		"pub_signals/selector":      val.Validate(signals[Selector], val.Required, val.In(v.opts.proofSelectorValue)),
+		"pub_signals/nullifier": val.Validate(signals.Get(Nullifier), val.Required),
+		"pub_signals/selector":  val.Validate(signals.Get(Selector), val.Required, val.In(v.opts.proofSelectorValue)),
+		"pub_signals/current_date": val.Validate(signals.Get(CurrentDate), val.When(
+			v.opts.proofType == GeorgianPassport,
+			val.Required,
+			afterDate(yesterday),
+			beforeDate(tomorrow),
+		)),
+		"pub_signals/personal_number_hash": val.Validate(signals.Get(PersonalNumberHash), val.When(
+			v.opts.proofType == GeorgianPassport,
+			val.Required,
+		)),
 		"pub_signals/id_state_root": err,
-		"pub_signals/event_id":      validateOnOptSet(signals[EventID], v.opts.eventID, val.In(v.opts.eventID)),
+		"pub_signals/event_id":      validateOnOptSet(signals.Get(EventID), v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
-		"pub_signals/citizenship": validateOnOptSet(decodeInt(signals[Citizenship]), v.opts.citizenships, val.In(v.opts.citizenships...)),
-		"pub_signals/event_data":  validateOnOptSet(signals[EventData], v.opts.eventDataRule, v.opts.eventDataRule),
+		"pub_signals/citizenship":   validateOnOptSet(decodeInt(signals.Get(Citizenship)), v.opts.citizenships, val.In(v.opts.citizenships...)),
+		"pub_signals/event_data":    validateOnOptSet(signals.Get(EventData), v.opts.eventDataRule, v.opts.eventDataRule),
+		"pub_signals/document_type": validateOnOptSet(decodeInt(signals.Get(DocumentType)), v.opts.documentType, val.In(v.opts.documentType)),
 	}
 
 	maps.Copy(all, v.validateBirthDate(signals))
@@ -129,28 +134,28 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 	return all.Filter()
 }
 
-func (v *Verifier) validateBirthDate(signals []string) val.Errors {
+func (v *Verifier) validateBirthDate(signals PubSignalGetter) val.Errors {
 	if v.opts.age == -1 {
 		return nil
 	}
 
 	allowedBirthDate := time.Now().UTC().AddDate(-v.opts.age, 0, 0)
 	return ORError(
-		val.Validate(signals[BirthDate], val.Required, beforeDate(allowedBirthDate)),
-		val.Validate(signals[BirthdateUpperBound], val.Required, equalDate(allowedBirthDate)),
+		val.Validate(signals.Get(BirthDate), val.Required, beforeDate(allowedBirthDate)),
+		val.Validate(signals.Get(BirthdateUpperBound), val.Required, equalDate(allowedBirthDate)),
 		[2]string{"pub_signals/birth_date", "pub_signals/birth_date_upper_bound"},
 	)
 }
 
-func (v *Verifier) validatePassportExpiration(signals []string) val.Errors {
+func (v *Verifier) validatePassportExpiration(signals PubSignalGetter) val.Errors {
 	return val.Errors{
 		"pub_signals/expiration_date_lower_bound": val.Validate(
-			signals[ExpirationDateLowerBound],
-			val.When(!isEmptyZKDate(signals[ExpirationDateLowerBound]), equalDate(time.Now().UTC())),
+			signals.Get(ExpirationDateLowerBound),
+			val.When(!isEmptyZKDate(signals.Get(ExpirationDateLowerBound)), equalDate(time.Now().UTC())),
 		),
 		"pub_signals/expiration_date": val.Validate(
-			signals[ExpirationDate],
-			val.When(!isEmptyZKDate(signals[ExpirationDate]), afterDate(time.Now().UTC())),
+			signals.Get(ExpirationDate),
+			val.When(!isEmptyZKDate(signals.Get(ExpirationDate)), afterDate(time.Now().UTC())),
 		),
 	}
 }
@@ -160,14 +165,14 @@ func isEmptyZKDate(dateStr string) bool {
 	return dateStr == "0" || dateStr == "52983525027888"
 }
 
-func (v *Verifier) validateIdentitiesInputs(signals []string) val.Errors {
-	counter, err := strconv.ParseInt(signals[IdentityCounterUpperBound], 10, 64)
+func (v *Verifier) validateIdentitiesInputs(signals PubSignalGetter) val.Errors {
+	counter, err := strconv.ParseInt(signals.Get(IdentityCounterUpperBound), 10, 64)
 	if err != nil {
 		return val.Errors{"pub_signals/identity_counter_upper_bound": err}
 	}
 
 	// ZKP generates a timestamp upper bound as regular unix timestamp, so or time validation is not suitable here
-	timestamp, err := strconv.ParseInt(signals[TimestampUpperBound], 10, 64)
+	timestamp, err := strconv.ParseInt(signals.Get(TimestampUpperBound), 10, 64)
 	if err != nil {
 		return val.Errors{"pub_signals/timestamp_upper_bound": err}
 	}

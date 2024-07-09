@@ -18,9 +18,6 @@ import (
 // the current date.
 
 const (
-	validAddress   = "rarimo1exzw7q2fytyrurkp5s7tm7ek720we9ejwujf2h"
-	invalidAddress = "rarimo1nzmzvnr8yk98a9qxgkr0rrmmza7lhj90h9zycl"
-
 	higherAge = 98
 	lowerAge  = 13
 	equalAge  = 18
@@ -144,7 +141,7 @@ func TestNewPassportVerifier(t *testing.T) {
 				opt = append(opt, WithVerificationKeyFile(tc.keyFile))
 			}
 
-			_, err := NewPassportVerifier(tc.key, opt...)
+			_, err := NewVerifier(tc.key, opt...)
 			if tc.want == "" {
 				assert.NoError(t, err)
 				return
@@ -186,24 +183,6 @@ func TestVerifyProof(t *testing.T) {
 				WithCitizenships(engCitizenship, usaCitizenship),
 			},
 			want: "pub_signals/citizenship: must be a valid value",
-		},
-		{
-			name: "Valid address",
-			initOpts: []VerifyOption{
-				WithVerificationKeyFile(verificationKeyFile),
-				WithProofSelectorValue("23073"),
-				WithRarimoAddress(validAddress),
-			},
-			want: "",
-		},
-		{
-			name: "Invalid address",
-			initOpts: []VerifyOption{
-				WithVerificationKeyFile(verificationKeyFile),
-				WithProofSelectorValue("23073"),
-				WithRarimoAddress(invalidAddress),
-			},
-			want: "pub_signals/event_data: must be a valid value",
 		},
 		{
 			name: "Valid event data",
@@ -337,6 +316,7 @@ func TestVerifyProof(t *testing.T) {
 		{
 			name: "All valid options",
 			initOpts: []VerifyOption{
+				WithProofType(GlobalPassport),
 				WithAgeAbove(equalAge),
 				WithProofSelectorValue("23073"),
 				WithCitizenships(ukrCitizenship),
@@ -345,9 +325,6 @@ func TestVerifyProof(t *testing.T) {
 				WithIdentitiesCounter(999),
 				WithIdentitiesCreationTimestampLimit(maxTimestamp),
 				WithVerificationKeyFile(verificationKeyFile),
-			},
-			verifyOpts: []VerifyOption{
-				WithRarimoAddress(validAddress),
 			},
 			want: "",
 		},
@@ -381,7 +358,7 @@ func TestVerifyProof(t *testing.T) {
 				key = verificationKey
 			}
 
-			verifier, err := NewPassportVerifier(tc.key, tc.initOpts...)
+			verifier, err := NewVerifier(tc.key, tc.initOpts...)
 			if err != nil {
 				t.Fatal(err)
 			}
