@@ -59,7 +59,7 @@ func (v *Verifier) VerifyRoot(root string) error {
 	}
 
 	var provided [32]byte
-	copy(provided[:], b.Bytes())
+	b.FillBytes(provided[:])
 
 	ctx, cancel := context.WithTimeout(context.Background(), v.timeout)
 	defer cancel()
