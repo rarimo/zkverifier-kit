@@ -59,7 +59,14 @@ func (v *Verifier) VerifyRoot(root string) error {
 	}
 
 	var provided [32]byte
-	copy(provided[:], b.Bytes())
+	// diff - started offset for correct copy Bytes
+	diff := 32 - len(b.Bytes())
+	if diff < 0 {
+		return ErrInvalidRoot
+	}
+	for i, bt := range b.Bytes() {
+		provided[diff+i] = bt
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), v.timeout)
 	defer cancel()
