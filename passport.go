@@ -106,7 +106,7 @@ func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 
 	return val.Errors{
 		"participation_event_id": validateOnOptSet(signals.Get(ParticipationEventID), v.opts.partEventID, val.In(v.opts.partEventID)),
-		"challenged_event_id":    validateOnOptSet(signals.Get(EventID), v.opts.challengedEventID, val.In(v.opts.challengedEventID)),
+		"challenged_event_id":    validateOnOptSet(signals.Get(EventID), v.opts.eventID, val.In(v.opts.eventID)),
 		"nullifiers_tree_root":   err,
 	}.Filter()
 }
