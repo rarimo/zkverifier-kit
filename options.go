@@ -158,9 +158,9 @@ func WithPollParticipationEventID(id string) VerifyOption {
 	}
 }
 
-// WithPollVoteVerifier takes an abstract verifier that should verify
+// WithPollRootVerifier takes an abstract verifier that should verify
 // NullifiersTreeRoot against the state
-func WithPollVoteVerifier(v root.Verifier) VerifyOption {
+func WithPollRootVerifier(v root.Verifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.voteVerifier = v
 	}
