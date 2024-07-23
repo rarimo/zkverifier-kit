@@ -11,7 +11,7 @@ import (
 	val "github.com/go-ozzo/ozzo-validation/v4"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	zkpverifier "github.com/iden3/go-rapidsnark/verifier"
-	"github.com/rarimo/zkverifier-kit/identity"
+	"github.com/rarimo/zkverifier-kit/root"
 )
 
 var ErrVerificationKeyRequired = errors.New("verification key is required")
@@ -58,13 +58,16 @@ func NewVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, er
 // pass initial values to verify in NewVerifier. In case when custom
 // values are required for different proofs, the options can be passed to
 // VerifyProof, which override the initial ones.
+//
+// Filtered validation.Errors are always returned, unless this is internal error.
+// You may use errors.As to assert whether it's validation or internal error.
 func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) error {
 	v2 := Verifier{
 		verificationKey: v.verificationKey,
 		opts:            mergeOptions(false, v.opts, options...),
 	}
 
-	if err := v2.validateBase(proof); err != nil {
+	if err := v2.validatePubSignals(proof); err != nil {
 		return err
 	}
 
@@ -77,25 +80,40 @@ func (v *Verifier) VerifyProof(proof zkptypes.ZKProof, options ...VerifyOption) 
 	return nil
 }
 
-func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
+func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 	var (
 		signals     = PubSignalGetter{ProofType: v.opts.proofType, Signals: zkProof.PubSignals}
-		pubSigCount = 22
+		pubSigCount = PubSignalsCount(v.opts.proofType)
 	)
-	if v.opts.proofType == GeorgianPassport {
-		pubSigCount = 24
-	}
 
 	err := val.Errors{
-		"zk_proof/proof":       val.Validate(zkProof.Proof, val.Required),
-		"zk_proof/pub_signals": val.Validate(zkProof.PubSignals, val.Required, val.Length(pubSigCount, pubSigCount)),
+		"zk_proof/proof":        val.Validate(zkProof.Proof, val.Required),
+		"zk_proof/pub_signals":  val.Validate(zkProof.PubSignals, val.Required, val.Length(pubSigCount, pubSigCount)),
+		"pub_signals/nullifier": val.Validate(signals.Get(Nullifier), val.Required),
 	}.Filter()
 	if err != nil {
 		return err
 	}
 
-	err = v.opts.rootVerifier.VerifyRoot(signals.Get(IdStateRoot))
-	if errors.Is(err, identity.ErrContractCall) {
+	if v.opts.proofType != PollParticipation {
+		return v.validatePassportSignals(signals)
+	}
+
+	err = v.opts.voteVerifier.VerifyRoot(signals.Get(NullifiersTreeRoot))
+	if !errors.Is(err, root.ErrInvalidRoot) {
+		return err // internal error
+	}
+
+	return val.Errors{
+		"event_id_a":           validateOnOptSet(signals.Get(ParticipationEventID), v.opts.partEventID, val.In(v.opts.partEventID)),
+		"event_id_b":           validateOnOptSet(signals.Get(ChallengedEventID), v.opts.challengedEventID, val.In(v.opts.challengedEventID)),
+		"nullifiers_tree_root": err,
+	}.Filter()
+}
+
+func (v *Verifier) validatePassportSignals(signals PubSignalGetter) error {
+	err := v.opts.passportVerifier.VerifyRoot(signals.Get(IdStateRoot))
+	if !errors.Is(err, root.ErrInvalidRoot) {
 		return err
 	}
 
@@ -107,8 +125,6 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 	)
 
 	all := val.Errors{
-		"pub_signals/nullifier": val.Validate(signals.Get(Nullifier), val.Required),
-		"pub_signals/selector":  val.Validate(signals.Get(Selector), val.Required, val.In(v.opts.proofSelectorValue)),
 		"pub_signals/current_date": val.Validate(signals.Get(CurrentDate), val.When(
 			v.opts.proofType == GeorgianPassport,
 			val.Required,
@@ -120,6 +136,7 @@ func (v *Verifier) validateBase(zkProof zkptypes.ZKProof) error {
 			val.Required,
 		)),
 		"pub_signals/id_state_root": err,
+		"pub_signals/selector":      validateOnOptSet(signals.Get(Selector), v.opts.proofSelectorValue, val.In(v.opts.proofSelectorValue)),
 		"pub_signals/event_id":      validateOnOptSet(signals.Get(EventID), v.opts.eventID, val.In(v.opts.eventID)),
 		// upper bound is a date: the earlier it is, the higher the age
 		"pub_signals/citizenship":   validateOnOptSet(decodeInt(signals.Get(Citizenship)), v.opts.citizenships, val.In(v.opts.citizenships...)),

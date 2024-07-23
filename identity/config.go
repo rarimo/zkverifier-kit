@@ -36,7 +36,7 @@ func (c VerifierProvider) ProvideVerifier() *Verifier {
 			From(kv.MustGetStringMap(c.getter, "root_verifier")).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out root_verifier disabled field: %s", err))
+			panic(fmt.Errorf("failed to figure out root_verifier disabled field: %w", err))
 		}
 		if disabled.Disabled {
 			return NewDisabledVerifier()
@@ -53,7 +53,7 @@ func (c VerifierProvider) ProvideVerifier() *Verifier {
 			From(kv.MustGetStringMap(c.getter, "root_verifier")).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out root_verifier: %s", err))
+			panic(fmt.Errorf("failed to figure out root_verifier: %w", err))
 		}
 
 		if cfg.RequestTimeout == 0 {

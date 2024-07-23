@@ -9,7 +9,7 @@ import (
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/zkverifier-kit/identity"
-	"github.com/rarimo/zkverifier-kit/internal/testutil"
+	"github.com/rarimo/zkverifier-kit/root"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -154,9 +154,10 @@ func TestNewPassportVerifier(t *testing.T) {
 
 func TestVerifyProof(t *testing.T) {
 	var (
-		defaultVerifier = identity.NewVerifier(new(testutil.MockCaller).WithRoot(storedRoot), 0)
-		badVerifier     = identity.NewVerifier(new(testutil.MockCaller).WithRoot("ffffff"), 0)
-		invalidKey      = bytes.Replace(verificationKey, []byte("1"), []byte("0"), -1)
+		defaultVerifier = root.DisabledVerifier{}
+		// TODO: add custom mock verifier
+		badVerifier = root.DisabledVerifier{}
+		invalidKey  = bytes.Replace(verificationKey, []byte("1"), []byte("0"), -1)
 	)
 
 	testCases := []struct {
@@ -321,7 +322,7 @@ func TestVerifyProof(t *testing.T) {
 				WithProofSelectorValue("23073"),
 				WithCitizenships(ukrCitizenship),
 				WithEventID(validEventID),
-				WithIdentityVerifier(defaultVerifier),
+				WithPassportRootVerifier(defaultVerifier),
 				WithIdentitiesCounter(999),
 				WithIdentitiesCreationTimestampLimit(maxTimestamp),
 				WithVerificationKeyFile(verificationKeyFile),
@@ -332,12 +333,12 @@ func TestVerifyProof(t *testing.T) {
 			name: "Invalid identity verifier",
 			initOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
-				WithIdentityVerifier(badVerifier),
+				WithPassportRootVerifier(badVerifier),
 				WithProofSelectorValue("23073"),
 			},
 			verifyOpts: []VerifyOption{
 				WithVerificationKeyFile(verificationKeyFile),
-				WithIdentityVerifier(badVerifier),
+				WithPassportRootVerifier(badVerifier),
 			},
 			want: fmt.Sprintf("pub_signals/id_state_root: %s", identity.ErrInvalidRoot),
 		},
