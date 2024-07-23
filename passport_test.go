@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
-	"github.com/rarimo/zkverifier-kit/identity"
 	"github.com/rarimo/zkverifier-kit/root"
 	"github.com/stretchr/testify/assert"
 )
@@ -340,7 +339,7 @@ func TestVerifyProof(t *testing.T) {
 				WithVerificationKeyFile(verificationKeyFile),
 				WithPassportRootVerifier(badVerifier),
 			},
-			want: fmt.Sprintf("pub_signals/id_state_root: %s", identity.ErrInvalidRoot),
+			want: fmt.Sprintf("pub_signals/id_state_root: %s", root.ErrInvalidRoot),
 		},
 		{
 			name: "Invalid verification key",

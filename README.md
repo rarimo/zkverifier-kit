@@ -16,11 +16,11 @@ package main
 
 import (
 	kit "github.com/rarimo/zkverifier-kit"
-	"github.com/rarimo/zkverifier-kit/identity"
+	"github.com/rarimo/zkverifier-kit/root"
 )
 
 func main() {
-	rv := identity.NewVerifier(contractCaller, reqTimeout)
+	rv := root.NewVerifier(contractCaller, reqTimeout)
 	
 	v, err := kit.NewVerifier(
 		kit.PassportVerification,
@@ -46,7 +46,7 @@ func main() {
 
 Let's break this down.
 
-### Configurable identity verifier
+### Configurable root verifier
 
 Firstly, you instantiate identity root verifier, which will verify the
 `IdStateRoot` public signal with contract call. You can refer to our
@@ -65,7 +65,7 @@ You can get values with [gitlab.com/distributed_lab/kit/kv](https://gitlab.com/d
 Then just create the verifier from config:
 ```go
     getter := kv.MustFromEnv()
-    config := identity.NewVerifierProvider(getter)
+    config := root.NewVerifierProvider(getter, root.PoseidonSMT)
 	rv := config.ProvideVerifier()
 ```
 
