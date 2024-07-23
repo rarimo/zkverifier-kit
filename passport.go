@@ -53,11 +53,11 @@ func NewVerifier(verificationKey []byte, options ...VerifyOption) (*Verifier, er
 	return &verifier, nil
 }
 
-// VerifyProof method verifies iden3 ZK proof and checks public signals. The
-// public signals to validate are defined in the VerifyOption list. Firstly, you
-// pass initial values to verify in NewVerifier. In case when custom
-// values are required for different proofs, the options can be passed to
-// VerifyProof, which override the initial ones.
+// VerifyProof method verifies ZK proof and checks public signals. The public
+// signals to validate are defined in the VerifyOption list. Firstly, you pass
+// initial values to verify in NewVerifier. In case when custom values are
+// required for different proofs, the options can be passed to VerifyProof, which
+// override the initial ones.
 //
 // Filtered validation.Errors are always returned, unless this is internal error.
 // You may use errors.As to assert whether it's validation or internal error.
@@ -105,9 +105,9 @@ func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 	}
 
 	return val.Errors{
-		"event_id_a":           validateOnOptSet(signals.Get(ParticipationEventID), v.opts.partEventID, val.In(v.opts.partEventID)),
-		"event_id_b":           validateOnOptSet(signals.Get(ChallengedEventID), v.opts.challengedEventID, val.In(v.opts.challengedEventID)),
-		"nullifiers_tree_root": err,
+		"participation_event_id": validateOnOptSet(signals.Get(ParticipationEventID), v.opts.partEventID, val.In(v.opts.partEventID)),
+		"challenged_event_id":    validateOnOptSet(signals.Get(EventID), v.opts.challengedEventID, val.In(v.opts.challengedEventID)),
+		"nullifiers_tree_root":   err,
 	}.Filter()
 }
 

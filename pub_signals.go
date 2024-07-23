@@ -35,7 +35,6 @@ const (
 	CurrentDate
 
 	ParticipationEventID
-	ChallengedEventID
 	NullifiersTreeRoot
 )
 
@@ -75,7 +74,7 @@ var (
 		Nullifier:            0,
 		NullifiersTreeRoot:   1,
 		ParticipationEventID: 2,
-		ChallengedEventID:    3,
+		EventID:              3,
 	}
 )
 

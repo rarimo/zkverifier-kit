@@ -21,7 +21,7 @@ type VerifyOptions struct {
 	eventDataRule val.Rule
 	// eventID - unique identifier associated with a specific event or interaction within
 	// the protocol execution, may be used to keep track of various steps or actions, this
-	// id is a string with a big integer in decimals format. Not for PollParticipation proof type.
+	// id is a string with a big integer in decimals format
 	eventID string
 	// passportVerifier - verifies root in passport proof types
 	passportVerifier root.Verifier
@@ -35,12 +35,8 @@ type VerifyOptions struct {
 	proofSelectorValue string
 	// documentType - provided document type name without UTF-8 encoding
 	documentType string
-	pollParticipationOpts
-}
-
-type pollParticipationOpts struct {
-	partEventID       string
-	challengedEventID string
+	// partEventID - participation event ID in PollParticipation proof type
+	partEventID string
 	// voteVerifier - verifies root in PollParticipation proof type
 	voteVerifier root.Verifier
 }
@@ -51,14 +47,10 @@ type pollParticipationOpts struct {
 type VerifyOption func(*VerifyOptions)
 
 // WithProofType select your proof type to use specific pub signals indexes.
-// Default is GlobalPassport. Do not use this option for PollParticipation proof
-// type, use WithPollParticipationFields instead.
+// Default is GlobalPassport.
 func WithProofType(t proofType) VerifyOption {
 	return func(opts *VerifyOptions) {
 		PubSignalsCount(t) // ensure proof type
-		if t == PollParticipation {
-			panic("must use WithPollParticipationFields for PollParticipation")
-		}
 		opts.proofType = t
 	}
 }
@@ -99,10 +91,12 @@ func WithEventData(raw []byte) VerifyOption {
 	}
 }
 
-// WithEventID takes event identifier as a string that represents big number in a decimal format.
-func WithEventID(identifier string) VerifyOption {
+// WithEventID takes event identifier as a string that represents big number in a
+// decimal format, i.e. it is compared with value from proof without conversions.
+// This is used for PollParticipation flow too as verifier's (challenged) event ID.
+func WithEventID(id string) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.eventID = identifier
+		opts.eventID = id
 	}
 }
 
@@ -157,16 +151,18 @@ func WithDocumentType(docType string) VerifyOption {
 	}
 }
 
-// WithPollParticipationFields must be called for PollParticipation proof type.
-// This type does not have selector, that is why all fields are required. ID args
-// are event IDs of poll contract and verifier service, respectively. The
-// verifier is for NullifiersTreeRoot verification.
-func WithPollParticipationFields(participationID, challengedID string, verifier root.Verifier) VerifyOption {
+// WithPollParticipationEventID takes decimal eventID
+func WithPollParticipationEventID(id string) VerifyOption {
 	return func(opts *VerifyOptions) {
-		opts.proofType = PollParticipation
-		opts.partEventID = participationID
-		opts.challengedEventID = challengedID
-		opts.voteVerifier = verifier
+		opts.partEventID = id
+	}
+}
+
+// WithPollVoteVerifier takes an abstract verifier that should verify
+// NullifiersTreeRoot against the state
+func WithPollVoteVerifier(v root.Verifier) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.voteVerifier = v
 	}
 }
 
