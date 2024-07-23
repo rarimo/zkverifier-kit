@@ -4,7 +4,6 @@ import (
 	"time"
 
 	val "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/rarimo/zkverifier-kit/identity"
 	"github.com/rarimo/zkverifier-kit/root"
 )
 
@@ -177,7 +176,7 @@ func mergeOptions(withDefaults bool, opts VerifyOptions, options ...VerifyOption
 	if withDefaults {
 		opts.maxIdentitiesCount = -1
 		opts.age = -1
-		opts.passportVerifier = identity.NewDisabledVerifier()
+		opts.passportVerifier = root.DisabledVerifier{}
 		opts.proofType = GlobalPassport
 	}
 

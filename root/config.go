@@ -12,35 +12,43 @@ import (
 const baseTimeout = 5 * time.Second
 
 // VerifierProvider provides a Verifier based on the given VerifierType from
-// config map. You must specify the name equal to VerifierType in map: this
-// allows to have multiple verifiers in the same app. For custom name or logic
-// write your own config map handler.
+// config map.
 //
-// Specifying "disabled: true" allows to skip other map fields.
+// Specifying "disabled: true" in config allows to skip other map fields.
 type VerifierProvider interface {
-	ProvideVerifier(VerifierType) Verifier
+	ProvideVerifier() Verifier
 }
 
 type config struct {
 	once   comfig.Once
 	getter kv.Getter
+	typ    VerifierType
 }
 
-func NewVerifierProvider(getter kv.Getter) VerifierProvider {
-	return &config{getter: getter}
+// NewVerifierProvider creates a new provider with given VerifierType. You must
+// specify the name equal to VerifierType in map: this allows to have multiple
+// verifiers in the same app. For custom name or logic write your own config map
+// handler.
+func NewVerifierProvider(getter kv.Getter, typ VerifierType) VerifierProvider {
+	switch typ {
+	case PoseidonSMT, ProposalSMT:
+	default:
+		panic(fmt.Errorf("unsupported verifier type: %s", typ))
+	}
+	return &config{getter: getter, typ: typ}
 }
 
-func (c *config) ProvideVerifier(typ VerifierType) Verifier {
+func (c *config) ProvideVerifier() Verifier {
 	return c.once.Do(func() interface{} {
 		var disabled struct {
 			Disabled bool `fig:"disabled"`
 		}
 
 		err := figure.Out(&disabled).
-			From(kv.MustGetStringMap(c.getter, string(typ))).
+			From(kv.MustGetStringMap(c.getter, string(c.typ))).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out %s disabled field: %w", typ, err))
+			panic(fmt.Errorf("failed to figure out %s disabled field: %w", c.typ, err))
 		}
 		if disabled.Disabled {
 			return DisabledVerifier{}
@@ -65,17 +73,15 @@ func (c *config) ProvideVerifier(typ VerifierType) Verifier {
 		}
 
 		var v Verifier
-		switch typ {
+		switch c.typ {
 		case PoseidonSMT:
 			v, err = NewPoseidonSMTVerifier(cfg.RPC, cfg.Contract, cfg.RequestTimeout)
 		case ProposalSMT:
 			v, err = NewProposalSMTVerifier(cfg.RPC, cfg.Contract, cfg.RequestTimeout)
-		default:
-			panic(fmt.Errorf("unsupported verifier type: %s", typ))
 		}
 
 		if err != nil {
-			panic(fmt.Errorf("failed to create %s verifier: %w", typ, err))
+			panic(fmt.Errorf("failed to create %s verifier: %w", c.typ, err))
 		}
 
 		return v
