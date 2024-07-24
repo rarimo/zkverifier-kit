@@ -62,10 +62,10 @@ func (c *config) ProvideVerifier() Verifier {
 
 		err = figure.Out(&cfg).
 			With(figure.EthereumHooks).
-			From(kv.MustGetStringMap(c.getter, "root_verifier")).
+			From(kv.MustGetStringMap(c.getter, string(c.typ))).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out root_verifier: %w", err))
+			panic(fmt.Errorf("failed to figure out %s: %w", c.typ, err))
 		}
 
 		if cfg.RequestTimeout == 0 {
@@ -77,7 +77,7 @@ func (c *config) ProvideVerifier() Verifier {
 		case PoseidonSMT:
 			v, err = NewPoseidonSMTVerifier(cfg.RPC, cfg.Contract, cfg.RequestTimeout)
 		case ProposalSMT:
-			v, err = NewProposalSMTVerifier(cfg.RPC, cfg.Contract, cfg.RequestTimeout)
+			v = NewProposalSMTVerifier(cfg.RPC, cfg.RequestTimeout).WithContract(cfg.Contract)
 		}
 
 		if err != nil {

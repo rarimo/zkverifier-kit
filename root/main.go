@@ -45,6 +45,7 @@ func prepareBindingData(rpc, contract string) (cli *ethclient.Client, addr commo
 		return
 	}
 
+	// can only fail on invalid URL
 	cli, err = ethclient.Dial(rpc)
 	if err != nil {
 		err = fmt.Errorf("dial RPC: %w", err)

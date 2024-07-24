@@ -13,25 +13,36 @@ import (
 // ProposalSMT contract by root value. Currently used for PollParticipation proof
 // type.
 type ProposalSMTVerifier struct {
-	filter  *proposalsmt.ProposalSMTFilterer
+	rpc     string
+	addr    string
 	timeout time.Duration
 }
 
-func NewProposalSMTVerifier(rpcURL, contract string, timeout time.Duration) (*ProposalSMTVerifier, error) {
-	cli, addr, err := prepareBindingData(rpcURL, contract)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare binding data: %w", err)
+// NewProposalSMTVerifier creates basic ProposalSMTVerifier with RPC only. You
+// must call WithContract to use it.
+func NewProposalSMTVerifier(rpcURL string, timeout time.Duration) *ProposalSMTVerifier {
+	return &ProposalSMTVerifier{
+		rpc:     rpcURL,
+		timeout: timeout,
 	}
+}
 
-	filter, err := proposalsmt.NewProposalSMTFilterer(addr, cli)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bind ProposalSMT caller: %w", err)
+// WithContract returns new instance of ProposalSMTVerifier which will call the
+// provided contract. Provided address must be a valid 20-byte hex.
+func (v *ProposalSMTVerifier) WithContract(addr string) Verifier {
+	return &ProposalSMTVerifier{
+		rpc:     v.rpc,
+		addr:    addr,
+		timeout: v.timeout,
 	}
-
-	return &ProposalSMTVerifier{filter: filter, timeout: timeout}, nil
 }
 
 func (v *ProposalSMTVerifier) VerifyRoot(root string) error {
+	cli, addr, err := prepareBindingData(v.rpc, v.addr)
+	if err != nil {
+		return fmt.Errorf("failed to prepare binding data: %w", err)
+	}
+
 	bytes := decimalTo32Bytes(root)
 	if bytes == nil {
 		return ErrInvalidRoot
@@ -40,7 +51,12 @@ func (v *ProposalSMTVerifier) VerifyRoot(root string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), v.timeout)
 	defer cancel()
 
-	it, err := v.filter.FilterRootUpdated(&bind.FilterOpts{Context: ctx}, [][32]byte{*bytes})
+	filter, err := proposalsmt.NewProposalSMTFilterer(addr, cli)
+	if err != nil {
+		return fmt.Errorf("failed to bind ProposalSMT filter: %w", err)
+	}
+
+	it, err := filter.FilterRootUpdated(&bind.FilterOpts{Context: ctx}, [][32]byte{*bytes})
 	if err != nil {
 		return fmt.Errorf("filtering RootUpdated events: %w", err)
 	}
