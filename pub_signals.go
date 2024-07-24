@@ -1,17 +1,20 @@
 package zkverifier_kit
 
-// proofType defines public signals, their indexes and verification rules in ZKP
-type proofType int
+type (
+	// proofType defines public signals, their indexes and verification rules in ZKP
+	proofType int
+
+	// pubSignalID is public signal identifiers (not index!) used to get the
+	// corresponding index from map[pubSignalID]int global variables. This is the
+	// only intended usage.
+	pubSignalID int
+)
 
 const (
 	GlobalPassport proofType = iota
 	GeorgianPassport
+	PollParticipation
 )
-
-// pubSignalID is public signal identifiers (not index!) used to get the
-// corresponding index from map[pubSignalID]int global variables. This is the
-// only intended usage.
-type pubSignalID int
 
 const (
 	Nullifier pubSignalID = iota
@@ -26,9 +29,13 @@ const (
 	IdentityCounterUpperBound
 	BirthdateUpperBound
 	ExpirationDateLowerBound
+
 	PersonalNumberHash
 	DocumentType
 	CurrentDate
+
+	ParticipationEventID
+	NullifiersTreeRoot
 )
 
 var (
@@ -63,6 +70,12 @@ var (
 		BirthdateUpperBound:       20,
 		ExpirationDateLowerBound:  21,
 	}
+	pubPollParticipation = map[pubSignalID]int{
+		Nullifier:            0,
+		NullifiersTreeRoot:   1,
+		ParticipationEventID: 2,
+		EventID:              3,
+	}
 )
 
 // PubSignalGetter is a structure to extract public signals from abstract ZKP in
@@ -74,7 +87,7 @@ type PubSignalGetter struct {
 }
 
 // Get extracts public signal by its identifier. Returns empty string on invalid
-// id or pub signals.
+// id, proof type or pub signals.
 func (p *PubSignalGetter) Get(id pubSignalID) string {
 	i, ok := Indexes(p.ProofType)[id]
 	if !ok || len(p.Signals) <= i {
@@ -92,6 +105,24 @@ func Indexes(t proofType) map[pubSignalID]int {
 		return pubGlobalPassport
 	case GeorgianPassport:
 		return pubGeorgianPassport
+	case PollParticipation:
+		return pubPollParticipation
+	default:
+		panic("unknown proof type")
+	}
+}
+
+// PubSignalsCount returns the exact count of pub signals in proof. Use for
+// validation on need to access specific fields, as Verifier already validates
+// length.
+func PubSignalsCount(t proofType) int {
+	switch t {
+	case GlobalPassport:
+		return 22
+	case GeorgianPassport:
+		return 24
+	case PollParticipation:
+		return 4
 	default:
 		panic("unknown proof type")
 	}
