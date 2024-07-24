@@ -56,7 +56,7 @@ func (c *config) ProvideVerifier() Verifier {
 
 		var cfg struct {
 			RPC            string        `fig:"rpc,required"`
-			Contract       string        `fig:"contract,required"`
+			Contract       string        `fig:"contract"`
 			RequestTimeout time.Duration `fig:"request_timeout"`
 		}
 
