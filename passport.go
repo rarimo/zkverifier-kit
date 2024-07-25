@@ -113,7 +113,7 @@ func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 
 func (v *Verifier) validatePassportSignals(signals PubSignalGetter) error {
 	err := v.opts.passportVerifier.VerifyRoot(signals.Get(IdStateRoot))
-	if !errors.Is(err, root.ErrInvalidRoot) {
+	if err != nil && !errors.Is(err, root.ErrInvalidRoot) {
 		return err
 	}
 
