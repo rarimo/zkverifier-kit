@@ -145,7 +145,9 @@ func (v *Verifier) validatePassportSignals(signals PubSignalGetter) error {
 	}
 
 	maps.Copy(all, v.validateBirthDate(signals))
-	maps.Copy(all, v.validatePassportExpiration(signals))
+	if !v.opts.skipExpirationCheck {
+		maps.Copy(all, v.validatePassportExpiration(signals))
+	}
 	maps.Copy(all, v.validateIdentitiesInputs(signals))
 
 	return all.Filter()
