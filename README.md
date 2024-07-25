@@ -3,7 +3,7 @@
 ## Introduction
 
 This repository is an SDK for connecting external services with Rarimo passport
-verification system that may be used in back-end services. Its main purpose is 
+verification and voting systems that may be used in back-end services. Its main purpose is 
 providing a convenient methods that can be used in any system without deep
 introduction in the Rarimo system structure.
 
@@ -20,16 +20,16 @@ import (
 )
 
 func main() {
-	rv := root.NewVerifier(contractCaller, reqTimeout)
+	passportVerifier := root.NewPoseidonSMTVerifier(rpcURL, contractAddress, reqTimeout)
 	
 	v, err := kit.NewVerifier(
-		kit.PassportVerification,
 		nil,
+		kit.WithProofType(kit.GeneralPassport),
 		kit.WithVerificationKeyFile("key.json"),
 		kit.WithEventID("304358862882731539112827930982999386691702727710421481944329166126417129570"),
 		kit.WithAgeAbove(18),
 		kit.WithCitizenships("UKR"),
-		kit.WithIdentityVerifier(rv),
+		kit.WithPassportRootVerifier(passportVerifier),
 		kit.WithIdentitiesCounter(0),
 		kit.WithIdentitiesCreationTimestampLimit(1847321000),
 	)
@@ -44,20 +44,55 @@ func main() {
 }
 ```
 
+```go
+package main
+
+import (
+	kit "github.com/rarimo/zkverifier-kit"
+	"github.com/rarimo/zkverifier-kit/root"
+)
+
+func main() {
+	pollVerifier := root.NewProposalSMTVerifier(rpcURL, reqTimeout)
+	
+	v, err := kit.NewVerifier(
+		nil,
+		kit.WithProofType(kit.PollParticipation),
+		kit.WithVerificationKeyFile("key.json"),
+		kit.WithEventID("304358862882731539112827930982999386691702727710421481944329166126417129570"),
+	)
+	if err != nil {
+		// ...
+	}
+	// data is an abstract event data that you expect to be in proof
+	err = v.VerifyProof(proof,
+		kit.WithPollParticipationEventID(pollEventID) ,
+		kit.WithPollRootVerifier(v.WithContract(pollContract)))
+	if err != nil {
+		// ...
+	}
+}
+```
 Let's break this down.
 
 ### Configurable root verifier
 
 Firstly, you instantiate identity root verifier, which will verify the
 `IdStateRoot` public signal with contract call. You can refer to our
-generated contract bindings in [poseidonsmt](internal/poseidonsmt) package.
+generated contract bindings in [poseidonsmt](internal/poseidonsmt) and [proposalsmt](internal/proposalsmt) package.
 However, maybe, you would like to create the verifier from config map.
 
 Here is configuration sample that you should have in `config.yaml` of your app:
 ```yaml
-root_verifier:
-  rpc: https://your-rpc
-  contract: 0x...
+verifier:
+  allowed_age: 18
+  allowed_identity_timestamp: 1715698750
+poseidonsmt_root_verifier:
+  rpc: evm_rpc_url
+  contract: poseidon_smt_contract_address
+  request_timeout: 10s
+proposalsmt_root_verifier:
+  rpc: evm_rpc_url
   request_timeout: 10s
 ```
 
