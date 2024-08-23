@@ -39,6 +39,9 @@ type VerifyOptions struct {
 	partEventID string
 	// voteVerifier - verifies root in PollParticipation proof type
 	voteVerifier root.Verifier
+	// skipExpirationCheck - specifies whether to check the expiration date.
+	// Used for tests only
+	skipExpirationCheck bool
 }
 
 // VerifyOption type alias for function that may add new values to VerifyOptions structure.
@@ -163,6 +166,12 @@ func WithPollParticipationEventID(id string) VerifyOption {
 func WithPollRootVerifier(v root.Verifier) VerifyOption {
 	return func(opts *VerifyOptions) {
 		opts.voteVerifier = v
+	}
+}
+
+func withSkipExpirationCheck(check bool) VerifyOption {
+	return func(opts *VerifyOptions) {
+		opts.skipExpirationCheck = check
 	}
 }
 

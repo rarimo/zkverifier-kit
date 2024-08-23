@@ -113,7 +113,7 @@ func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 
 func (v *Verifier) validatePassportSignals(signals PubSignalGetter) error {
 	err := v.opts.passportVerifier.VerifyRoot(signals.Get(IdStateRoot))
-	if !errors.Is(err, root.ErrInvalidRoot) {
+	if err != nil && !errors.Is(err, root.ErrInvalidRoot) {
 		return err
 	}
 
@@ -145,7 +145,9 @@ func (v *Verifier) validatePassportSignals(signals PubSignalGetter) error {
 	}
 
 	maps.Copy(all, v.validateBirthDate(signals))
-	maps.Copy(all, v.validatePassportExpiration(signals))
+	if !v.opts.skipExpirationCheck {
+		maps.Copy(all, v.validatePassportExpiration(signals))
+	}
 	maps.Copy(all, v.validateIdentitiesInputs(signals))
 
 	return all.Filter()
