@@ -100,7 +100,7 @@ func (v *Verifier) validatePubSignals(zkProof zkptypes.ZKProof) error {
 	}
 
 	err = v.opts.voteVerifier.VerifyRoot(signals.Get(NullifiersTreeRoot))
-	if !errors.Is(err, root.ErrInvalidRoot) {
+	if (err != nil) && (!errors.Is(err, root.ErrInvalidRoot)) {
 		return err // internal error
 	}
 
