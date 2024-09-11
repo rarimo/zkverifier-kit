@@ -119,7 +119,7 @@ func Indexes(t proofType) map[pubSignalID]int {
 func PubSignalsCount(t proofType) int {
 	switch t {
 	case GlobalPassport:
-		return 22
+		return 23
 	case GeorgianPassport:
 		return 24
 	case PollParticipation:
