@@ -48,10 +48,11 @@ var (
 		EventData:                 10,
 		IdStateRoot:               11,
 		Selector:                  12,
-		TimestampUpperBound:       14,
-		IdentityCounterUpperBound: 16,
-		BirthdateUpperBound:       18,
-		ExpirationDateLowerBound:  19,
+		CurrentDate:               13,
+		TimestampUpperBound:       15,
+		IdentityCounterUpperBound: 17,
+		BirthdateUpperBound:       19,
+		ExpirationDateLowerBound:  20,
 	}
 	pubGeorgianPassport = map[pubSignalID]int{
 		Nullifier:                 0,
